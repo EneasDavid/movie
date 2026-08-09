@@ -134,7 +134,7 @@ export default function Profile() {
   return (
     <div className="profile-page">
       <header className="topbar">
-        <Link className="brand" to="/">df-orfeu</Link>
+        <Link className="brand" to="/">DF Orfeu</Link>
         <Link className="btn btn-primary profile-back" to="/">Voltar ao catálogo</Link>
       </header>
 

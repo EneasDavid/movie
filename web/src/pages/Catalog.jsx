@@ -101,8 +101,8 @@ export default function Catalog() {
 
   return (
     <>
-      <header className="topbar">
-        <a className="brand" href="/">df-orfeu</a>
+      <header className="topbar catalog-topbar">
+        <a className="brand" href="/">DF Orfeu</a>
         <div className="search">
           <input
             className="search-input"

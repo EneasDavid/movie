@@ -74,6 +74,13 @@ Configure em **Project Settings → Environment Variables**:
 `GOOGLE_DRIVE_API_KEY`, `GOOGLE_DRIVE_FOLDER_ID`, e (se optar por Redis)
 `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN`.
 
+Para enviar confirmações e redefinições de senha a qualquer usuário, o
+domínio configurado no Resend precisa aparecer como **Verified** (não
+**Pending**) e o deploy deve usar, por exemplo,
+`EMAIL_FROM="df-orfeu <df-orfeu@naoresponder.ic.ufal.br>"`. O remetente de
+teste `onboarding@resend.dev` só entrega para o endereço do proprietário da
+conta Resend.
+
 ## Arquitetura
 
 ```
@@ -193,15 +200,71 @@ runtime, e mesmo que tivesse, recodificar um filme inteiro em tempo real
 a cada request estouraria os limites de execução/memória do Vercel de
 longe.
 
-A correção real é uma vez só, na origem: use
-[`scripts/fix-audio-codec.sh`](scripts/fix-audio-codec.sh) para
-remuxar os arquivos problemáticos localmente (requer `ffmpeg`/`ffprobe`
-— `brew install ffmpeg`). Ele copia o vídeo sem recodificar (rápido, sem
-perda de qualidade) e converte só o áudio pra AAC:
+A correção real é uma vez só, na origem — duas formas de fazer isso,
+ambas rodando localmente (nenhuma roda dentro do app publicado, pelo
+motivo acima):
+
+### Opção A — manual: baixa, roda o script, sobe de volta
+
+[`scripts/fix-audio-codec.sh`](scripts/fix-audio-codec.sh) remuxa
+arquivos locais (requer `ffmpeg`/`ffprobe` — `brew install ffmpeg`).
+Copia o vídeo sem recodificar (rápido, sem perda de qualidade) e
+converte só o áudio pra AAC:
 
 ```bash
 ./scripts/fix-audio-codec.sh /caminho/para/os/videos /caminho/de/saida
 ```
+
+Depois é você quem sobe os arquivos de saída pro Drive no lugar dos
+originais.
+
+### Opção B — automático: direto contra o Drive
+
+[`cmd/fixaudio`](cmd/fixaudio/main.go) faz tudo isso sozinho: lista o
+catálogo inteiro (pasta raiz + subpastas, mesma estrutura que vira
+categorias no app), baixa cada vídeo, confere o codec de áudio, remuxa o
+que estiver incompatível e **sobe o resultado de volta no mesmo file ID**
+— por isso o catálogo, o cache de thumbnail e o progresso salvo de
+"continuar assistindo" continuam válidos sem precisar mexer em mais
+nada.
+
+O workflow `.github/workflows/fix-incompatible-media.yml` executa essa
+varredura diariamente e também pode ser iniciado em **Actions → Fix
+incompatible media → Run workflow**. Configure estes secrets no repositório:
+
+- `GOOGLE_DRIVE_FOLDER_ID`: ID da pasta raiz do catálogo.
+- `GOOGLE_SERVICE_ACCOUNT_JSON_B64`: conteúdo do JSON da conta de serviço
+  codificado com `base64 < chave.json | tr -d '\n'`.
+
+A pasta raiz precisa estar compartilhada como **Editor** com o
+`client_email` do JSON. Sem isso, o download funciona, mas a atualização do
+arquivo termina com `403 insufficientFilePermissions`.
+
+Isso precisa de permissão de **escrita** no Drive, que a API key atual
+não tem (ela só lê). Configuração única, no
+[Google Cloud Console](https://console.cloud.google.com/):
+
+1. No mesmo projeto onde a API key do Drive foi criada, vá em **IAM e
+   administrador → Contas de serviço → Criar conta de serviço**. Não
+   precisa nenhuma permissão especial de projeto/IAM — o acesso vem de
+   compartilhar a pasta do Drive com ela, no próximo passo.
+2. Abra a conta de serviço criada → aba **Chaves → Adicionar chave →
+   Criar nova chave → JSON**. Isso baixa um arquivo `.json` — guarde-o
+   fora do repositório (nunca faça commit dele).
+3. Copie o email da conta de serviço (termina em
+   `...iam.gserviceaccount.com`). No Google Drive, abra a pasta raiz do
+   catálogo → **Compartilhar** → cole esse email → permissão **Editor**.
+   Sem esse passo a conta de serviço não enxerga a pasta, mesmo com a
+   chave em mãos — é o mesmo modelo de compartilhar com qualquer pessoa.
+
+Com isso feito:
+
+```bash
+go run ./cmd/fixaudio -credentials=/caminho/para/service-account.json -folder=$GOOGLE_DRIVE_FOLDER_ID
+```
+
+Use `-dry-run` primeiro pra ver o que seria corrigido sem baixar/subir
+nada.
 
 Depois, suba os arquivos de `/caminho/de/saida` pro Google Drive no lugar
 dos originais (e apague os antigos, pra não duplicar no catálogo).

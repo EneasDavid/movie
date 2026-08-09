@@ -1,0 +1,44 @@
+name: Fix incompatible media
+
+on:
+  schedule:
+    # Scan every day at 03:17 UTC. A non-round minute avoids the busiest
+    # part of GitHub's scheduled-run window.
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: fix-incompatible-media
+  cancel-in-progress: false
+
+jobs:
+  convert:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Check required secrets
+        env:
+          DRIVE_FOLDER_ID: ${{ secrets.GOOGLE_DRIVE_FOLDER_ID }}
+          SERVICE_ACCOUNT_JSON_B64: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON_B64 }}
+        run: |
+          test -n "$DRIVE_FOLDER_ID"
+          test -n "$SERVICE_ACCOUNT_JSON_B64"
+
+      - name: Prepare service-account credential
+        env:
+          SERVICE_ACCOUNT_JSON_B64: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON_B64 }}
+        run: |
+          printf '%s' "$SERVICE_ACCOUNT_JSON_B64" | base64 --decode > "$RUNNER_TEMP/google-service-account.json"
+          chmod 600 "$RUNNER_TEMP/google-service-account.json"
+
+      - name: Convert incompatible audio and update Drive files
+        env:
+          GOOGLE_DRIVE_FOLDER_ID: ${{ secrets.GOOGLE_DRIVE_FOLDER_ID }}
+        run: go run ./cmd/fixaudio -credentials="$RUNNER_TEMP/google-service-account.json"

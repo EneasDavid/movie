@@ -57,11 +57,14 @@ func Get() *App {
 		}
 
 		app = &App{
-			Config:          cfg,
-			Drive:           drive.NewClient(cfg.DriveAPIKey, cfg.DriveMaxInFlight),
-			Redis:           redis,
-			RateLimiter:     store.NewRateLimiter(redis, cfg.RateLimitPerWindow, cfg.RateLimitWindow),
-			AuthRateLimiter: store.NewRateLimiter(redis, 8, 5*time.Minute),
+			Config:      cfg,
+			Drive:       drive.NewClient(cfg.DriveAPIKey, cfg.DriveMaxInFlight),
+			Redis:       redis,
+			RateLimiter: store.NewRateLimiter(redis, cfg.RateLimitPerWindow, cfg.RateLimitWindow),
+			// Shared-IP limiter protects the endpoint without locking a phone
+			// out after a few retries. Per-email lockout in Login remains the
+			// stricter credential-stuffing control.
+			AuthRateLimiter: store.NewRateLimiter(redis, 20, 5*time.Minute),
 			Mailer:          m,
 		}
 	})

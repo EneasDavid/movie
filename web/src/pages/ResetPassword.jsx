@@ -20,7 +20,7 @@ export default function ResetPassword() {
     return (
       <div className="auth-page">
         <div className="auth-card">
-          <a className="brand auth-brand" href="/">df-orfeu</a>
+          <a className="brand auth-brand" href="/">DF Orfeu</a>
           <p className="auth-notice auth-notice-error">Link inválido — faltando token de redefinição.</p>
           <p className="auth-switch">
             <Link to="/forgot-password">Solicitar novo link</Link>
@@ -57,7 +57,7 @@ export default function ResetPassword() {
   return (
     <div className="auth-page">
       <div className="auth-card">
-        <a className="brand auth-brand" href="/">df-orfeu</a>
+        <a className="brand auth-brand" href="/">DF Orfeu</a>
         <h1 className="auth-title">Redefinir senha</h1>
 
         <form className="auth-form" onSubmit={handleSubmit}>

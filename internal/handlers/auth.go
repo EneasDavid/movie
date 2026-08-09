@@ -38,13 +38,16 @@ type userResponse struct {
 type pendingVerificationResponse struct {
 	Email               string `json:"email"`
 	PendingVerification bool   `json:"pendingVerification"`
+	EmailSent           bool   `json:"emailSent"`
 }
 
-func writePendingVerification(w http.ResponseWriter, status int, email string) {
+func writePendingVerification(w http.ResponseWriter, status int, email string, emailSent bool) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store")
 	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(pendingVerificationResponse{Email: email, PendingVerification: true})
+	_ = json.NewEncoder(w).Encode(pendingVerificationResponse{
+		Email: email, PendingVerification: true, EmailSent: emailSent,
+	})
 }
 
 // Signup serves POST /api/auth/signup — creates the account and sends the
@@ -98,16 +101,18 @@ func Signup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	emailSent := true
 	if err := sendVerificationEmail(ctx, a, r, user); err != nil {
 		// Unlike login/resend, this one IS worth surfacing: signup just
 		// succeeded, so silently failing to send the only way to unlock
 		// the account would leave the user stuck with no explanation.
 		log.Printf("signup: sendVerificationEmail(%s) failed: %v", user.Email, err)
+		emailSent = false
 	} else {
 		log.Printf("signup: ok user=%s email=%s verification email sent", user.ID, user.Email)
 	}
 
-	writePendingVerification(w, http.StatusCreated, user.Email)
+	writePendingVerification(w, http.StatusCreated, user.Email, emailSent)
 }
 
 // Login serves POST /api/auth/login. Requires a verified email — an
@@ -163,12 +168,14 @@ func Login(w http.ResponseWriter, r *http.Request) {
 		// Correct credentials, just not usable yet — resend the link
 		// (best-effort) rather than making the user hunt for a "resend"
 		// button on a screen they can't otherwise get past.
+		emailSent := true
 		if err := sendVerificationEmail(ctx, a, r, user); err != nil {
 			log.Printf("login: blocked user=%s email=%s reason=unverified, resend also failed: %v", user.ID, user.Email, err)
+			emailSent = false
 		} else {
 			log.Printf("login: blocked user=%s email=%s reason=unverified, verification email resent", user.ID, user.Email)
 		}
-		writePendingVerification(w, http.StatusForbidden, user.Email)
+		writePendingVerification(w, http.StatusForbidden, user.Email, emailSent)
 		return
 	}
 

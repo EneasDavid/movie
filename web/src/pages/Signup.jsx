@@ -54,6 +54,10 @@ export default function Signup() {
     setSubmitting(true);
     try {
       const result = await signup(email, password, firstName.trim(), lastName.trim());
+      if (result?.emailSent === false) {
+        setError("A conta foi criada, mas não foi possível enviar o email de confirmação. Tente entrar novamente depois que o domínio de email for ativado.");
+        return;
+      }
       // Signup never starts a session (login requires a verified email,
       // and a fresh account never is yet) — send them to check their
       // inbox instead of the catalog. The chosen photo isn't uploaded
@@ -70,7 +74,7 @@ export default function Signup() {
   return (
     <div className="auth-page">
       <div className="auth-card">
-        <a className="brand auth-brand" href="/">df-orfeu</a>
+        <a className="brand auth-brand" href="/">DF Orfeu</a>
         <h1 className="auth-title">Criar conta</h1>
 
         <form className="auth-form" onSubmit={handleSubmit}>

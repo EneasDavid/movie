@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -38,7 +39,10 @@ func SetSessionCookie(w http.ResponseWriter, r *http.Request, token string) {
 		MaxAge:   int(SessionTTL.Seconds()),
 		HttpOnly: true,
 		Secure:   isHTTPS(r),
-		SameSite: http.SameSiteStrictMode,
+		// Lax keeps the cookie first-party and CSRF-resistant for mutating
+		// cross-site requests, while behaving consistently when iOS opens
+		// the installed web app from Safari or from a confirmation link.
+		SameSite: http.SameSiteLaxMode,
 	})
 }
 
@@ -51,7 +55,7 @@ func ClearSessionCookie(w http.ResponseWriter, r *http.Request) {
 		MaxAge:   -1,
 		HttpOnly: true,
 		Secure:   isHTTPS(r),
-		SameSite: http.SameSiteStrictMode,
+		SameSite: http.SameSiteLaxMode,
 	})
 }
 
@@ -70,5 +74,11 @@ func isHTTPS(r *http.Request) bool {
 	}
 	// Vercel (and most proxies/CDNs) terminate TLS upstream and forward
 	// this header so the origin knows the original scheme was https.
-	return r.Header.Get("X-Forwarded-Proto") == "https"
+	// Some proxy chains append values ("https,http") instead of replacing
+	// the header. The client-facing scheme is the first value.
+	proto := r.Header.Get("X-Forwarded-Proto")
+	if before, _, ok := strings.Cut(proto, ","); ok {
+		proto = before
+	}
+	return strings.EqualFold(strings.TrimSpace(proto), "https")
 }

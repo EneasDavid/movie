@@ -14,5 +14,10 @@ web/dist/
 .env.local
 .env.*.local
 
+# Google service account keys (cmd/fixaudio) — a credential file, never
+# committed, same as .env.
+*service-account*.json
+movie-privet-*.json
+
 # OS
 .DS_Store

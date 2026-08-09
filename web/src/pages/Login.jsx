@@ -28,6 +28,10 @@ export default function Login() {
       navigate("/", { replace: true });
     } catch (err) {
       if (err instanceof ApiError && err.body?.pendingVerification) {
+        if (err.body.emailSent === false) {
+          setError("Sua conta ainda não foi confirmada e não foi possível enviar o email. Tente novamente depois que o domínio de email for ativado.");
+          return;
+        }
         navigate("/check-email", { state: { email: err.body.email || email } });
         return;
       }
@@ -40,7 +44,7 @@ export default function Login() {
   return (
     <div className="auth-page">
       <div className="auth-card">
-        <a className="brand auth-brand" href="/">df-orfeu</a>
+        <a className="brand auth-brand" href="/">DF Orfeu</a>
         <h1 className="auth-title">Entrar</h1>
 
         {verifyStatus === "success" && (

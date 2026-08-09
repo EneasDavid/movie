@@ -76,7 +76,7 @@ func Load() Config {
 		DriveMaxInFlight: getInt("DRIVE_MAX_INFLIGHT", 8),
 
 		ResendAPIKey:  getEnv("RESEND_API_KEY", ""),
-		EmailFrom:     getEnv("EMAIL_FROM", "df-orfeu <onboarding@resend.dev>"),
+		EmailFrom:     getEnv("EMAIL_FROM", "df-orfeu <df-orfeu@naoresponder.ic.ufal.br>"),
 		PublicBaseURL: getEnv("PUBLIC_BASE_URL", ""),
 	}
 }

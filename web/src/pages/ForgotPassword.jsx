@@ -27,7 +27,7 @@ export default function ForgotPassword() {
   return (
     <div className="auth-page">
       <div className="auth-card">
-        <a className="brand auth-brand" href="/">df-orfeu</a>
+        <a className="brand auth-brand" href="/">DF Orfeu</a>
         <h1 className="auth-title">Esqueci minha senha</h1>
 
         {sent ? (
