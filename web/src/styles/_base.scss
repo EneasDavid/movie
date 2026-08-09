@@ -24,6 +24,17 @@ img {
   display: block;
 }
 
+// .topbar is `position: fixed` and reserves no space in normal flow, so
+// whatever renders first inside <main> would sit directly under it and
+// be hidden. Reserve that space here, unconditionally — the hero (which
+// *is* meant to bleed up behind the transparent-to-black topbar gradient,
+// Netflix-style) cancels it back out with a matching negative margin in
+// _hero.scss. Every other state (search results, skeleton, empty/error
+// messages) just gets pushed below the bar like it should.
+main {
+  padding-top: t.$topbar-height;
+}
+
 a {
   color: inherit;
   text-decoration: none;

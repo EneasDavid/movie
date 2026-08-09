@@ -6,6 +6,10 @@
   min-height: 320px;
   display: flex;
   align-items: flex-end;
+  // Cancels out <main>'s padding-top (see _base.scss) so the hero image
+  // still reaches all the way to the real top of the viewport and sits
+  // behind the topbar's fade-to-transparent gradient, by design.
+  margin-top: -#{t.$topbar-height};
   margin-bottom: 32px;
   opacity: 0;
   animation: fade-in t.$dur-slow t.$ease-out forwards;

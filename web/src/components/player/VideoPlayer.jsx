@@ -209,9 +209,17 @@ export default function VideoPlayer({ fileId, title }) {
     };
     const onError = () => {
       const code = video.error?.code;
+      // code 4 (MEDIA_ERR_SRC_NOT_SUPPORTED) here almost never means the
+      // stream request failed — /api/stream already returned 200 with
+      // real bytes by the time the <video> element gets this far. It
+      // means the browser fetched the file but refuses to decode it,
+      // which in this catalog has consistently traced back to source
+      // files with an E-AC-3 audio track browsers can't play. Pointing
+      // people at "check Drive sharing" sent them chasing the wrong
+      // fix, so this names the actual cause instead.
       setError(
         code === 4
-          ? "Vídeo indisponível: verifique se o arquivo ainda está compartilhado no Google Drive."
+          ? "Este vídeo não pôde ser reproduzido: o arquivo de origem usa um formato de áudio incompatível com o navegador (não é um problema de permissão ou conexão)."
           : "Ocorreu um erro ao carregar o vídeo."
       );
       setIsBuffering(false);
