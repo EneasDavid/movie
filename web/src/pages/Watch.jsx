@@ -1,16 +1,21 @@
 import { useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import VideoPlayer from "../components/player/VideoPlayer";
+import { formatTitle } from "../lib/titleFormat";
 
 export default function Watch() {
   const [params] = useSearchParams();
   const fileId = params.get("id") || "";
-  const title = params.get("title") || "";
+  const title = formatTitle(params.get("title") || "");
 
   useEffect(() => {
     document.body.classList.add("player-body");
-    return () => document.body.classList.remove("player-body");
-  }, []);
+    document.title = title ? `${title} — MOVIE` : "MOVIE";
+    return () => {
+      document.body.classList.remove("player-body");
+      document.title = "MOVIE";
+    };
+  }, [title]);
 
   if (!fileId) {
     return (

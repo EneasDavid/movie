@@ -29,6 +29,12 @@
     width: 100%;
     height: 100%;
     object-fit: cover;
+    opacity: 0;
+    transition: opacity t.$dur-base t.$ease-out;
+
+    &.loaded {
+      opacity: 1;
+    }
   }
 
   @include m.hover-only {

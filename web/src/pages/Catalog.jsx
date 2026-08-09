@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Hero from "../components/catalog/Hero";
 import Row from "../components/catalog/Row";
+import CatalogSkeleton from "../components/catalog/CatalogSkeleton";
 import { fetchCatalog } from "../lib/api";
 import { allProgressEntries, MIN_RESUMABLE_SECONDS, NEAR_END_RATIO } from "../lib/progress";
 
@@ -89,7 +90,12 @@ export default function Catalog() {
       <main>
         {!q && <Hero item={hero} />}
 
-        {loading && <div className="status" role="status" aria-live="polite">Carregando catálogo…</div>}
+        {loading && (
+          <>
+            <div className="sr-only" role="status" aria-live="polite">Carregando catálogo…</div>
+            <CatalogSkeleton />
+          </>
+        )}
         {error && (
           <div className="status error" role="alert">
             Não foi possível carregar o catálogo: {error}

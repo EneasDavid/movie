@@ -14,6 +14,19 @@
   border-radius: 6px;
 }
 
+.skeleton-title {
+  width: 180px;
+  height: 20px;
+  margin: 0 0 10px clamp(16px, 4vw, 48px);
+}
+
+.skeleton-card {
+  // Placeholders shouldn't run the real card's entrance animation twice
+  // (once as a skeleton, once for real once data arrives) — keep it static.
+  animation: none;
+  opacity: 1;
+}
+
 @keyframes skeleton-shimmer {
   0% {
     background-position: 100% 0;

@@ -15,6 +15,13 @@ export default defineConfig({
     emptyOutDir: true,
     sourcemap: false,
   },
+  css: {
+    preprocessorOptions: {
+      scss: {
+        api: "modern",
+      },
+    },
+  },
   server: {
     port: 5173,
     proxy: {

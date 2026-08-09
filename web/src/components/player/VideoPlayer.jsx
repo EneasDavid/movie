@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { streamURL } from "../../lib/api";
 import { readProgress, writeProgress, MIN_RESUMABLE_SECONDS, NEAR_END_RATIO } from "../../lib/progress";
 import { useIdleControls } from "../../hooks/useIdleControls";
+import { useMobileLandscape } from "../../hooks/useMobileLandscape";
 import Controls from "./Controls";
 import CenterFeedback from "./CenterFeedback";
 
@@ -26,6 +27,7 @@ export default function VideoPlayer({ fileId, title }) {
   const [feedback, setFeedback] = useState(null); // { type: 'play'|'pause'|'back15'|'fwd15' }
 
   const { idle, resetIdle } = useIdleControls(isPlaying);
+  const { forceRotateCss, requestLandscape } = useMobileLandscape(playerRef);
   const src = useMemo(() => streamURL(fileId), [fileId]);
 
   const flashFeedback = useCallback((type) => {
@@ -81,17 +83,31 @@ export default function VideoPlayer({ fileId, title }) {
     };
   }, [saveProgress]);
 
+  // Best-effort: if the card tap that navigated here still counts as an
+  // active user gesture by the time this runs, fullscreen+landscape lock
+  // succeeds immediately with no second tap needed. If not, this silently
+  // no-ops and the guaranteed retry in togglePlay (a real, fresh tap)
+  // picks it up — plus the CSS rotate fallback covers the gap either way.
+  useEffect(() => {
+    requestLandscape();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // --- Core actions ---
   const togglePlay = useCallback(() => {
     const video = videoRef.current;
     if (!video) return;
     if (video.paused) {
       video.play().catch(() => setError("Não foi possível iniciar a reprodução."));
+      // Tied to this tap so it counts as a real user gesture — required
+      // by both the Fullscreen API and Screen Orientation Lock. Safe to
+      // call every play tap: entering fullscreen/locking twice is a no-op.
+      requestLandscape();
     } else {
       video.pause();
     }
     resetIdle();
-  }, [resetIdle]);
+  }, [resetIdle, requestLandscape]);
 
   const seekBy = useCallback(
     (deltaSeconds) => {
@@ -249,7 +265,7 @@ export default function VideoPlayer({ fileId, title }) {
   return (
     <div
       ref={playerRef}
-      className="player"
+      className={`player${forceRotateCss ? " force-rotate" : ""}`}
       onMouseMove={resetIdle}
       onTouchStart={resetIdle}
     >
