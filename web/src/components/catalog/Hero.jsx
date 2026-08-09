@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { watchPath } from "../../lib/api";
 import { formatTitle } from "../../lib/titleFormat";
 
@@ -23,10 +24,10 @@ export default function Hero({ item }) {
       <div className="hero-content">
         <h1 className="hero-title">{formatTitle(item.name)}</h1>
         <div className="hero-actions">
-          <a className="btn btn-primary" href={watchPath(item)}>
+          <Link className="btn btn-primary" to={watchPath(item)}>
             <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M8 5v14l11-7z" /></svg>
             Assistir
-          </a>
+          </Link>
         </div>
       </div>
     </section>

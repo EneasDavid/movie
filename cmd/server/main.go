@@ -45,7 +45,12 @@ func main() {
 	mux.HandleFunc("POST /api/auth/logout", middleware.Guard(a.RateLimiter, []string{http.MethodPost}, handlers.Logout))
 	mux.HandleFunc("GET /api/auth/me", middleware.Guard(a.RateLimiter, []string{http.MethodGet}, middleware.RequireAuth(a.Redis, handlers.Me)))
 	mux.HandleFunc("GET /api/auth/verify", middleware.Guard(a.AuthRateLimiter, []string{http.MethodGet}, handlers.VerifyEmail))
-	mux.HandleFunc("POST /api/auth/resend-verification", middleware.Guard(a.AuthRateLimiter, []string{http.MethodPost}, middleware.RequireAuth(a.Redis, handlers.ResendVerification)))
+	// No RequireAuth on these: by definition, someone hitting them can't
+	// log in yet (unverified) or has forgotten their password (no
+	// session). The token/email in the body is the actual credential.
+	mux.HandleFunc("POST /api/auth/resend-verification", middleware.Guard(a.AuthRateLimiter, []string{http.MethodPost}, handlers.ResendVerification))
+	mux.HandleFunc("POST /api/auth/forgot-password", middleware.Guard(a.AuthRateLimiter, []string{http.MethodPost}, handlers.ForgotPassword))
+	mux.HandleFunc("POST /api/auth/reset-password", middleware.Guard(a.AuthRateLimiter, []string{http.MethodPost}, handlers.ResetPassword))
 	mux.HandleFunc("GET /api/auth/avatar", middleware.Guard(a.RateLimiter, []string{http.MethodGet}, middleware.RequireAuth(a.Redis, handlers.GetAvatar)))
 	mux.HandleFunc("POST /api/auth/avatar", middleware.Guard(a.RateLimiter, []string{http.MethodPost}, middleware.RequireAuth(a.Redis, handlers.UploadAvatar)))
 

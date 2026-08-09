@@ -53,10 +53,11 @@ func UploadAvatar(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 
 	if err := a.Redis.SetAvatar(ctx, userID, data, contentType); err != nil {
-		log.Printf("avatar: SetAvatar(%s) failed: %v", userID, err)
+		log.Printf("avatar: upload failed user=%s: %v", userID, err)
 		httpx.WriteJSONError(w, http.StatusInternalServerError, "não foi possível salvar a foto")
 		return
 	}
+	log.Printf("avatar: upload ok user=%s bytes=%d type=%s", userID, len(data), contentType)
 	w.WriteHeader(http.StatusNoContent)
 }
 

@@ -25,6 +25,13 @@ $gap: 20px;
 
 $breakpoint-sm: 640px;
 
+// .topbar is `position: fixed`, deliberately outside normal document flow
+// (it floats transparent-to-solid over the hero, Netflix-style). Anything
+// that needs to sit visibly *below* it rather than underneath it — the
+// verify-email banner — needs this height explicitly, since fixed
+// positioning gives it none for free.
+$topbar-height: 72px;
+
 :root {
   --bg: #{$bg};
   --bg-elevated: #{$bg-elevated};

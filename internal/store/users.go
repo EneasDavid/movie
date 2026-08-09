@@ -104,6 +104,17 @@ func (r *Redis) MarkEmailVerified(ctx context.Context, userID string) error {
 	return r.saveUser(ctx, user)
 }
 
+// UpdatePassword replaces a user's password hash — the last step of the
+// "forgot password" flow, after the reset token has been verified.
+func (r *Redis) UpdatePassword(ctx context.Context, userID, newPasswordHash string) error {
+	user, err := r.GetUserByID(ctx, userID)
+	if err != nil {
+		return err
+	}
+	user.PasswordHash = newPasswordHash
+	return r.saveUser(ctx, user)
+}
+
 // saveUser persists an already-loaded, mutated User back to Redis —
 // shared by every "load, flip a field, save" update (verification,
 // avatar upload) so each of those isn't hand-rolling its own marshal.

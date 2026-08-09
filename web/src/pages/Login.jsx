@@ -12,7 +12,9 @@ export default function Login() {
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const verifyStatus = new URLSearchParams(location.search).get("verify");
+  const params = new URLSearchParams(location.search);
+  const verifyStatus = params.get("verify");
+  const resetStatus = params.get("reset");
 
   if (user) return <Navigate to="/" replace />;
 
@@ -24,6 +26,10 @@ export default function Login() {
       await login(email, password);
       navigate("/", { replace: true });
     } catch (err) {
+      if (err instanceof ApiError && err.body?.pendingVerification) {
+        navigate("/check-email", { state: { email: err.body.email || email } });
+        return;
+      }
       setError(err instanceof ApiError ? err.message : "Erro ao entrar");
     } finally {
       setSubmitting(false);
@@ -36,11 +42,17 @@ export default function Login() {
         <a className="brand auth-brand" href="/">df-orfeu</a>
         <h1 className="auth-title">Entrar</h1>
 
+        {verifyStatus === "success" && (
+          <p className="auth-notice">Email confirmado — já pode entrar.</p>
+        )}
         {verifyStatus === "invalid" && (
           <p className="auth-notice auth-notice-error">Link de confirmação inválido ou expirado.</p>
         )}
         {verifyStatus === "error" && (
           <p className="auth-notice auth-notice-error">Não foi possível confirmar seu email. Tente novamente.</p>
+        )}
+        {resetStatus === "success" && (
+          <p className="auth-notice">Senha redefinida — já pode entrar com a nova senha.</p>
         )}
 
         <form className="auth-form" onSubmit={handleSubmit}>
@@ -74,6 +86,9 @@ export default function Login() {
           </button>
         </form>
 
+        <p className="auth-switch">
+          <Link to="/forgot-password">Esqueci minha senha</Link>
+        </p>
         <p className="auth-switch">
           Não tem conta? <Link to="/signup">Criar conta</Link>
         </p>

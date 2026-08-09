@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Hero from "../components/catalog/Hero";
 import Row from "../components/catalog/Row";
 import CatalogSkeleton from "../components/catalog/CatalogSkeleton";
-import { fetchCatalog, fetchProgress, removeProgress, resendVerification } from "../lib/api";
+import { fetchCatalog, fetchProgress, removeProgress } from "../lib/api";
 import { MIN_RESUMABLE_SECONDS, NEAR_END_RATIO } from "../lib/progress";
 import { useAuth } from "../context/AuthContext";
 import Avatar from "../components/auth/Avatar";
@@ -23,7 +23,6 @@ export default function Catalog() {
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
   const [progressEntries, setProgressEntries] = useState([]);
-  const [resendState, setResendState] = useState("idle"); // idle | sending | sent | error
 
   useEffect(() => {
     let cancelled = false;
@@ -86,16 +85,6 @@ export default function Catalog() {
     });
   }, []);
 
-  const handleResendVerification = useCallback(async () => {
-    setResendState("sending");
-    try {
-      await resendVerification();
-      setResendState("sent");
-    } catch {
-      setResendState("error");
-    }
-  }, []);
-
   const hero = useMemo(() => pickHero(categories), [categories]);
 
   const q = query.trim().toLowerCase();
@@ -132,21 +121,6 @@ export default function Catalog() {
           </button>
         </div>
       </header>
-
-      {user && !user.emailVerified && (
-        <div className="verify-banner" role="status">
-          {resendState === "sent" ? (
-            <span>Email de confirmação reenviado — confira sua caixa de entrada.</span>
-          ) : (
-            <>
-              <span>Confirme seu email para garantir o acesso à sua conta.</span>
-              <button type="button" onClick={handleResendVerification} disabled={resendState === "sending"}>
-                {resendState === "sending" ? "Enviando…" : "Reenviar confirmação"}
-              </button>
-            </>
-          )}
-        </div>
-      )}
 
       <main>
         {!q && <Hero item={hero} />}

@@ -25,16 +25,22 @@ export function AuthProvider({ children }) {
     };
   }, []);
 
+  // Login only ever resolves with a real, verified user — an unverified
+  // account makes the API throw ApiError with body.pendingVerification
+  // set instead (see lib/api.js), which the caller (Login.jsx) catches
+  // and handles by showing the "check your inbox" screen, not by asking
+  // this function to model that state.
   const doLogin = useCallback(async (email, password) => {
     const u = await api.login(email, password);
     setUser(u);
     return u;
   }, []);
 
+  // Never sets `user` — signup no longer starts a session (login requires
+  // a verified email, and a fresh signup never is yet). Resolves with
+  // {email, pendingVerification: true} for the caller to act on.
   const doSignup = useCallback(async (email, password, firstName, lastName) => {
-    const u = await api.signup(email, password, firstName, lastName);
-    setUser(u);
-    return u;
+    return api.signup(email, password, firstName, lastName);
   }, []);
 
   const doLogout = useCallback(async () => {

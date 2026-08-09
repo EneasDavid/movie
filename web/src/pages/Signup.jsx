@@ -7,7 +7,7 @@ import { passwordChecklist, isPasswordValid } from "../lib/passwordRules";
 const MAX_PHOTO_BYTES = 3 * 1024 * 1024;
 
 export default function Signup() {
-  const { user, signup, uploadAvatar } = useAuth();
+  const { user, signup } = useAuth();
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
 
@@ -16,7 +16,6 @@ export default function Signup() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [photoFile, setPhotoFile] = useState(null);
   const [photoPreview, setPhotoPreview] = useState(null);
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
@@ -33,7 +32,8 @@ export default function Signup() {
       return;
     }
     setError(null);
-    setPhotoFile(file);
+    // Preview-only for now: uploading requires a session, which doesn't
+    // exist until after the account is verified and logged in.
     setPhotoPreview(URL.createObjectURL(file));
   };
 
@@ -52,14 +52,13 @@ export default function Signup() {
 
     setSubmitting(true);
     try {
-      await signup(email, password, firstName.trim(), lastName.trim());
-      if (photoFile) {
-        // Best-effort: a failed photo upload shouldn't block account
-        // creation — the default icon covers the gap, and the photo can
-        // be added again later.
-        await uploadAvatar(photoFile).catch(() => {});
-      }
-      navigate("/", { replace: true });
+      const result = await signup(email, password, firstName.trim(), lastName.trim());
+      // Signup never starts a session (login requires a verified email,
+      // and a fresh account never is yet) — send them to check their
+      // inbox instead of the catalog. The chosen photo isn't uploaded
+      // yet either, for the same reason (upload requires a session);
+      // it can be added from the profile once logged in.
+      navigate("/check-email", { state: { email: result?.email || email } });
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Erro ao criar conta");
     } finally {

@@ -39,12 +39,13 @@ func Catalog(w http.ResponseWriter, r *http.Request) {
 	} else {
 		built, err := a.Drive.BuildCatalog(ctx, a.Config.DriveFolderID)
 		if err != nil {
-			log.Printf("catalog: BuildCatalog failed: %v", err)
+			log.Printf("catalog: build failed: %v", err)
 			httpx.WriteJSONError(w, http.StatusBadGateway,
 				"não foi possível carregar o catálogo do Google Drive — verifique se a pasta está compartilhada como 'Qualquer pessoa com o link' e se a API key é válida")
 			return
 		}
 		_ = a.Redis.SetCatalog(ctx, built, a.Config.CatalogTTL)
+		log.Printf("catalog: build ok categories=%d (cache miss, rebuilt from Drive)", len(built.Categories))
 		catalog = built
 	}
 
