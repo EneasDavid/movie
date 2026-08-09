@@ -56,9 +56,35 @@ export function AuthProvider({ children }) {
     setUser((prev) => (prev ? { ...prev, hasAvatar: true } : prev));
   }, []);
 
+  // Returns the updated user (the API echoes it back) so the caller can
+  // show a fresh value immediately, and updates context state the same
+  // way so the topbar name updates without a reload.
+  const doUpdateProfile = useCallback(async (firstName, lastName) => {
+    const u = await api.updateProfile(firstName, lastName);
+    setUser(u);
+    return u;
+  }, []);
+
+  // Doesn't touch `user` — a password change doesn't change anything
+  // AuthContext tracks, and staying signed in afterward is the whole
+  // point (unlike the emailed-reset-link flow, this one already proved
+  // the caller knows the current password).
+  const doChangePassword = useCallback(async (currentPassword, newPassword) => {
+    await api.changePassword(currentPassword, newPassword);
+  }, []);
+
   return (
     <AuthContext.Provider
-      value={{ user, loading, login: doLogin, signup: doSignup, logout: doLogout, uploadAvatar: doUploadAvatar }}
+      value={{
+        user,
+        loading,
+        login: doLogin,
+        signup: doSignup,
+        logout: doLogout,
+        uploadAvatar: doUploadAvatar,
+        updateProfile: doUpdateProfile,
+        changePassword: doChangePassword,
+      }}
     >
       {children}
     </AuthContext.Provider>

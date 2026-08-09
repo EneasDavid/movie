@@ -31,6 +31,21 @@
   flex-shrink: 0;
 }
 
+.topbar-account {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 4px;
+  padding: 4px 6px;
+  margin: -4px -6px;
+  transition: background-color t.$dur-base t.$ease-hover;
+
+  &:hover,
+  &:focus-visible {
+    background: rgba(255, 255, 255, 0.1);
+  }
+}
+
 .topbar-email {
   font-size: 13px;
   color: var(--text-dim);

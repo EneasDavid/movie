@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import Hero from "../components/catalog/Hero";
 import Row from "../components/catalog/Row";
 import CatalogSkeleton from "../components/catalog/CatalogSkeleton";
@@ -114,8 +115,10 @@ export default function Catalog() {
           />
         </div>
         <div className="topbar-user">
-          <Avatar hasAvatar={user?.hasAvatar} size={28} />
-          <span className="topbar-email">{user?.firstName || user?.email}</span>
+          <Link className="topbar-account" to="/profile" aria-label="Sua conta">
+            <Avatar hasAvatar={user?.hasAvatar} size={28} />
+            <span className="topbar-email">{user?.firstName || user?.email}</span>
+          </Link>
           <button className="topbar-logout" type="button" onClick={logout}>
             Sair
           </button>

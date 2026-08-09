@@ -159,8 +159,10 @@
     gap: 6px;
     transition: color t.$dur-base t.$ease-hover;
 
+    // Was var(--text-dim) — a satisfied rule should read as unambiguously
+    // "done", not just "slightly brighter grey".
     &.ok {
-      color: var(--text-dim);
+      color: var(--success);
     }
   }
 }
@@ -169,10 +171,13 @@
   width: 14px;
   display: inline-flex;
   justify-content: center;
-  color: var(--accent);
+  // Default (not-ok) is a neutral dim grey — was var(--accent), the red
+  // brand color, which had this backwards: an unmet rule isn't an error
+  // state, and a *met* one was rendering red instead of green.
+  color: var(--text-dimmer);
 
-  .password-checklist li:not(.ok) & {
-    color: var(--text-dimmer);
+  .password-checklist li.ok & {
+    color: var(--success);
   }
 }
 

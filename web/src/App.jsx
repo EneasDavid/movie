@@ -3,6 +3,7 @@ import { AuthProvider } from "./context/AuthContext";
 import RequireAuth from "./components/auth/RequireAuth";
 import Catalog from "./pages/Catalog";
 import Watch from "./pages/Watch";
+import Profile from "./pages/Profile";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import CheckEmail from "./pages/CheckEmail";
@@ -32,6 +33,14 @@ export default function App() {
           element={
             <RequireAuth>
               <Watch />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/profile"
+          element={
+            <RequireAuth>
+              <Profile />
             </RequireAuth>
           }
         />

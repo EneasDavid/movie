@@ -104,8 +104,10 @@ func (r *Redis) MarkEmailVerified(ctx context.Context, userID string) error {
 	return r.saveUser(ctx, user)
 }
 
-// UpdatePassword replaces a user's password hash — the last step of the
-// "forgot password" flow, after the reset token has been verified.
+// UpdatePassword replaces a user's password hash — the last step of both
+// the "forgot password" flow (after the reset token is verified) and the
+// logged-in "change password" flow (after the current password is
+// verified).
 func (r *Redis) UpdatePassword(ctx context.Context, userID, newPasswordHash string) error {
 	user, err := r.GetUserByID(ctx, userID)
 	if err != nil {
@@ -113,6 +115,21 @@ func (r *Redis) UpdatePassword(ctx context.Context, userID, newPasswordHash stri
 	}
 	user.PasswordHash = newPasswordHash
 	return r.saveUser(ctx, user)
+}
+
+// UpdateProfile replaces a user's first/last name — the account-settings
+// "edit name" action.
+func (r *Redis) UpdateProfile(ctx context.Context, userID, firstName, lastName string) (*User, error) {
+	user, err := r.GetUserByID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	user.FirstName = firstName
+	user.LastName = lastName
+	if err := r.saveUser(ctx, user); err != nil {
+		return nil, err
+	}
+	return user, nil
 }
 
 // saveUser persists an already-loaded, mutated User back to Redis —

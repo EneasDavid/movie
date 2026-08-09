@@ -106,6 +106,22 @@ export function uploadAvatar(file) {
   });
 }
 
+export function updateProfile(firstName, lastName) {
+  return request("/api/auth/profile", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ firstName, lastName }),
+  });
+}
+
+export function changePassword(currentPassword, newPassword) {
+  return request("/api/auth/change-password", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ currentPassword, newPassword }),
+  });
+}
+
 // --- Progress ("continuar assistindo") ---
 export async function fetchProgress() {
   const data = await request("/api/progress");

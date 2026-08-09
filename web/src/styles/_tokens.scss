@@ -11,6 +11,7 @@ $text-dim: #a3a3ab;
 $text-dimmer: #6f6f78;
 $accent: #e5484d;
 $accent-hover: #ff6169;
+$success: #22c55e;
 
 $ease-out: cubic-bezier(0.23, 1, 0.32, 1);
 $ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
@@ -41,5 +42,6 @@ $topbar-height: 72px;
   --text-dimmer: #{$text-dimmer};
   --accent: #{$accent};
   --accent-hover: #{$accent-hover};
+  --success: #{$success};
   --shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
 }

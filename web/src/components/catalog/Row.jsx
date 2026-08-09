@@ -14,7 +14,7 @@ export default function Row({ title, items, progressByFileId, onRemoveItem }) {
 
   return (
     <section className="row">
-      <h2 className="row-title">{title}</h2>
+      {title && <h2 className="row-title">{title}</h2>}
       <div className="row-track-wrap">
         <button className="row-nav row-nav-prev" type="button" aria-label="Anterior" onClick={() => scrollByCards(-1)}>
           ‹

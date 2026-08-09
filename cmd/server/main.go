@@ -53,6 +53,11 @@ func main() {
 	mux.HandleFunc("POST /api/auth/reset-password", middleware.Guard(a.AuthRateLimiter, []string{http.MethodPost}, handlers.ResetPassword))
 	mux.HandleFunc("GET /api/auth/avatar", middleware.Guard(a.RateLimiter, []string{http.MethodGet}, middleware.RequireAuth(a.Redis, handlers.GetAvatar)))
 	mux.HandleFunc("POST /api/auth/avatar", middleware.Guard(a.RateLimiter, []string{http.MethodPost}, middleware.RequireAuth(a.Redis, handlers.UploadAvatar)))
+	mux.HandleFunc("PUT /api/auth/profile", middleware.Guard(a.RateLimiter, []string{http.MethodPut}, middleware.RequireAuth(a.Redis, handlers.UpdateProfile)))
+	// Strict auth limiter here too: this is a second surface (besides
+	// login) where getting the current password wrong repeatedly is a
+	// brute-force attempt, not routine traffic.
+	mux.HandleFunc("POST /api/auth/change-password", middleware.Guard(a.AuthRateLimiter, []string{http.MethodPost}, middleware.RequireAuth(a.Redis, handlers.ChangePassword)))
 
 	// Progress ("continuar assistindo"): per-user, requires a session.
 	mux.HandleFunc("GET /api/progress", middleware.Guard(a.RateLimiter, []string{http.MethodGet}, middleware.RequireAuth(a.Redis, handlers.ListProgress)))

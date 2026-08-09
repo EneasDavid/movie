@@ -423,6 +423,96 @@ func ResetPassword(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// UpdateProfile serves PUT /api/auth/profile {firstName, lastName}.
+// Requires RequireAuth — always acts on the caller's own account, never
+// takes a userID/email in the body.
+func UpdateProfile(w http.ResponseWriter, r *http.Request) {
+	a := appctx.Get()
+	userID, _ := middleware.UserIDFromContext(r.Context())
+
+	var body struct {
+		FirstName string `json:"firstName"`
+		LastName  string `json:"lastName"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		httpx.WriteJSONError(w, http.StatusBadRequest, "corpo da requisição inválido")
+		return
+	}
+	firstName := strings.TrimSpace(body.FirstName)
+	lastName := strings.TrimSpace(body.LastName)
+	if err := auth.ValidateName(firstName, lastName); err != nil {
+		httpx.WriteJSONError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+	defer cancel()
+
+	user, err := a.Redis.UpdateProfile(ctx, userID, firstName, lastName)
+	if err != nil {
+		log.Printf("profile: update failed user=%s: %v", userID, err)
+		httpx.WriteJSONError(w, http.StatusInternalServerError, "não foi possível atualizar o perfil")
+		return
+	}
+
+	log.Printf("profile: update ok user=%s", userID)
+	writeUser(w, user)
+}
+
+// ChangePassword serves POST /api/auth/change-password
+// {currentPassword, newPassword}. Requires RequireAuth. Unlike
+// ResetPassword (which trusts a one-time emailed token as the
+// credential), this trusts the current password itself — someone with an
+// active session but not the actual password shouldn't be able to lock
+// the real owner out.
+func ChangePassword(w http.ResponseWriter, r *http.Request) {
+	a := appctx.Get()
+	userID, _ := middleware.UserIDFromContext(r.Context())
+
+	var body struct {
+		CurrentPassword string `json:"currentPassword"`
+		NewPassword     string `json:"newPassword"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		httpx.WriteJSONError(w, http.StatusBadRequest, "corpo da requisição inválido")
+		return
+	}
+	if err := auth.ValidatePassword(body.NewPassword); err != nil {
+		httpx.WriteJSONError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+	defer cancel()
+
+	user, err := a.Redis.GetUserByID(ctx, userID)
+	if err != nil {
+		log.Printf("change-password: failed user=%s: user lookup: %v", userID, err)
+		httpx.WriteJSONError(w, http.StatusInternalServerError, "erro interno")
+		return
+	}
+	if !auth.VerifyPassword(user.PasswordHash, body.CurrentPassword) {
+		log.Printf("change-password: failed user=%s reason=wrong_current_password", userID)
+		httpx.WriteJSONError(w, http.StatusUnauthorized, "senha atual incorreta")
+		return
+	}
+
+	hash, err := auth.HashPassword(body.NewPassword)
+	if err != nil {
+		log.Printf("change-password: hash password failed for user=%s: %v", userID, err)
+		httpx.WriteJSONError(w, http.StatusInternalServerError, "erro interno")
+		return
+	}
+	if err := a.Redis.UpdatePassword(ctx, userID, hash); err != nil {
+		log.Printf("change-password: failed user=%s: %v", userID, err)
+		httpx.WriteJSONError(w, http.StatusInternalServerError, "não foi possível trocar a senha")
+		return
+	}
+
+	log.Printf("change-password: ok user=%s", userID)
+	w.WriteHeader(http.StatusNoContent)
+}
+
 // baseURL prefers the explicitly configured PUBLIC_BASE_URL (most
 // reliable — no dependency on proxy headers being forwarded correctly),
 // falling back to reconstructing it from the request.
