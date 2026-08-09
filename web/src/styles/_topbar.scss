@@ -22,6 +22,39 @@
   }
 }
 
+.topbar-user {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.topbar-email {
+  font-size: 13px;
+  color: var(--text-dim);
+  display: none;
+
+  @media (min-width: 640px) {
+    display: inline;
+  }
+}
+
+.topbar-logout {
+  font-size: 13px;
+  font-weight: 700;
+  padding: 6px 12px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  transition:
+    border-color t.$dur-base t.$ease-hover,
+    background-color t.$dur-base t.$ease-hover;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: var(--text);
+  }
+}
+
 .search-input {
   background: rgba(0, 0, 0, 0.55);
   border: 1px solid rgba(255, 255, 255, 0.25);

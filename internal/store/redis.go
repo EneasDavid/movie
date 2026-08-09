@@ -100,10 +100,28 @@ func (r *Redis) GetString(ctx context.Context, key string) (string, bool) {
 	return s, true
 }
 
-// SetString stores a string value with a TTL.
+// SetString stores a string value. A ttl <= 0 stores it with no expiry
+// (used for account records, which should persist indefinitely).
 func (r *Redis) SetString(ctx context.Context, key, value string, ttl time.Duration) error {
+	if ttl <= 0 {
+		_, err := r.command(ctx, "SET", key, value)
+		return err
+	}
 	_, err := r.command(ctx, "SET", key, value, "EX", int(ttl.Seconds()))
 	return err
+}
+
+// setNX sets a key only if it doesn't already exist — the building block
+// for claiming a unique email at signup without a race between two
+// concurrent requests for the same address.
+func (r *Redis) setNX(ctx context.Context, key, value string) (bool, error) {
+	res, err := r.command(ctx, "SET", key, value, "NX")
+	if err != nil {
+		return false, err
+	}
+	// Upstash returns the string "OK" on success, or null (empty result) if
+	// the key already existed and NX prevented the write.
+	return res != nil && string(res) != "null", nil
 }
 
 // GetBytes/SetBytes store binary data base64-encoded (JSON-safe transport).

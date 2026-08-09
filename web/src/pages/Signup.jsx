@@ -1,0 +1,185 @@
+import { useRef, useState } from "react";
+import { Link, Navigate, useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import { ApiError } from "../lib/api";
+import { passwordChecklist, isPasswordValid } from "../lib/passwordRules";
+
+const MAX_PHOTO_BYTES = 3 * 1024 * 1024;
+
+export default function Signup() {
+  const { user, signup, uploadAvatar } = useAuth();
+  const navigate = useNavigate();
+  const fileInputRef = useRef(null);
+
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [photoFile, setPhotoFile] = useState(null);
+  const [photoPreview, setPhotoPreview] = useState(null);
+  const [error, setError] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  if (user) return <Navigate to="/" replace />;
+
+  const checklist = passwordChecklist(password);
+
+  const handlePhotoChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > MAX_PHOTO_BYTES) {
+      setError("A foto precisa ter no máximo 3MB.");
+      return;
+    }
+    setError(null);
+    setPhotoFile(file);
+    setPhotoPreview(URL.createObjectURL(file));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError(null);
+
+    if (!isPasswordValid(password)) {
+      setError("A senha ainda não atende todos os requisitos abaixo.");
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError("As senhas não coincidem.");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      await signup(email, password, firstName.trim(), lastName.trim());
+      if (photoFile) {
+        // Best-effort: a failed photo upload shouldn't block account
+        // creation — the default icon covers the gap, and the photo can
+        // be added again later.
+        await uploadAvatar(photoFile).catch(() => {});
+      }
+      navigate("/", { replace: true });
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Erro ao criar conta");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="auth-page">
+      <div className="auth-card">
+        <a className="brand auth-brand" href="/">df-orfeu</a>
+        <h1 className="auth-title">Criar conta</h1>
+
+        <form className="auth-form" onSubmit={handleSubmit}>
+          <div className="auth-photo-row">
+            <button
+              type="button"
+              className="auth-photo-picker"
+              onClick={() => fileInputRef.current?.click()}
+              aria-label="Escolher foto de perfil"
+            >
+              {photoPreview ? (
+                <img className="auth-photo-preview" src={photoPreview} alt="" />
+              ) : (
+                <span className="auth-photo-placeholder">+ Foto</span>
+              )}
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              hidden
+              onChange={handlePhotoChange}
+            />
+            <p className="auth-photo-hint">
+              Opcional — sem foto, usamos um ícone padrão.
+            </p>
+          </div>
+
+          <div className="auth-name-row">
+            <label className="auth-label">
+              Nome
+              <input
+                className="auth-input"
+                type="text"
+                autoComplete="given-name"
+                required
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+              />
+            </label>
+            <label className="auth-label">
+              Sobrenome
+              <input
+                className="auth-input"
+                type="text"
+                autoComplete="family-name"
+                required
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+              />
+            </label>
+          </div>
+
+          <label className="auth-label">
+            Email
+            <input
+              className="auth-input"
+              type="email"
+              autoComplete="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+          </label>
+
+          <label className="auth-label">
+            Senha
+            <input
+              className="auth-input"
+              type="password"
+              autoComplete="new-password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+          </label>
+
+          <ul className="password-checklist">
+            {checklist.map((rule) => (
+              <li key={rule.key} className={rule.ok ? "ok" : ""}>
+                <span className="password-checklist-icon" aria-hidden="true">{rule.ok ? "✓" : "○"}</span>
+                {rule.label}
+              </li>
+            ))}
+          </ul>
+
+          <label className="auth-label">
+            Confirmar senha
+            <input
+              className="auth-input"
+              type="password"
+              autoComplete="new-password"
+              required
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+            />
+          </label>
+
+          {error && <p className="auth-notice auth-notice-error">{error}</p>}
+
+          <button className="btn btn-primary auth-submit" type="submit" disabled={submitting}>
+            {submitting ? "Criando conta…" : "Criar conta"}
+          </button>
+        </form>
+
+        <p className="auth-switch">
+          Já tem conta? <Link to="/login">Entrar</Link>
+        </p>
+      </div>
+    </div>
+  );
+}

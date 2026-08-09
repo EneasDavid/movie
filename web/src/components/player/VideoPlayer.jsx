@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { streamURL } from "../../lib/api";
-import { readProgress, writeProgress, MIN_RESUMABLE_SECONDS, NEAR_END_RATIO } from "../../lib/progress";
+import { streamURL, fetchProgress, saveProgress as saveProgressRemote } from "../../lib/api";
+import { MIN_RESUMABLE_SECONDS, NEAR_END_RATIO } from "../../lib/progress";
 import { useIdleControls } from "../../hooks/useIdleControls";
 import { useMobileLandscape } from "../../hooks/useMobileLandscape";
 import Controls from "./Controls";
@@ -14,6 +14,7 @@ export default function VideoPlayer({ fileId, title }) {
   const playerRef = useRef(null);
   const lastSaveRef = useRef(0);
   const resumedRef = useRef(false);
+  const initialProgressRef = useRef(null);
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [isBuffering, setIsBuffering] = useState(true);
@@ -27,26 +28,51 @@ export default function VideoPlayer({ fileId, title }) {
   const [feedback, setFeedback] = useState(null); // { type: 'play'|'pause'|'back15'|'fwd15' }
 
   const { idle, resetIdle } = useIdleControls(isPlaying);
-  const { forceRotateCss, requestLandscape } = useMobileLandscape(playerRef);
+  const { forceRotateCss, requestLandscape } = useMobileLandscape(playerRef, videoRef);
   const src = useMemo(() => streamURL(fileId), [fileId]);
 
   const flashFeedback = useCallback((type) => {
     setFeedback({ type, key: Date.now() });
   }, []);
 
-  // --- Resume from saved progress once metadata is known ---
+  // Seeks to the saved position — a no-op until both pieces it needs are
+  // ready: the fetched progress entry (async, from the server) and the
+  // video's own duration (async, from the browser). Whichever of the two
+  // effects below finishes second is what actually triggers the seek;
+  // resumedRef guards against doing it twice.
+  const maybeResume = useCallback(() => {
+    const video = videoRef.current;
+    const saved = initialProgressRef.current;
+    if (!video || !saved || resumedRef.current || !video.duration) return;
+    resumedRef.current = true;
+    if (saved.time >= MIN_RESUMABLE_SECONDS && saved.time / (saved.duration || video.duration || 1) < NEAR_END_RATIO) {
+      video.currentTime = saved.time;
+    }
+  }, []);
+
+  // Fetch saved progress from the server as soon as the player mounts.
+  useEffect(() => {
+    let cancelled = false;
+    fetchProgress()
+      .then((entries) => {
+        if (cancelled) return;
+        initialProgressRef.current = entries.find((e) => e.fileId === fileId) || null;
+        maybeResume();
+      })
+      .catch(() => {
+        /* no saved progress available — just start from the beginning */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [fileId, maybeResume]);
+
   const handleLoadedMetadata = useCallback(() => {
     const video = videoRef.current;
     if (!video) return;
     setDuration(video.duration || 0);
-    if (!resumedRef.current) {
-      resumedRef.current = true;
-      const saved = readProgress(fileId);
-      if (saved && saved.time >= MIN_RESUMABLE_SECONDS && saved.time / (saved.duration || video.duration || 1) < NEAR_END_RATIO) {
-        video.currentTime = saved.time;
-      }
-    }
-  }, [fileId]);
+    maybeResume();
+  }, [maybeResume]);
 
   const saveProgress = useCallback(
     (force) => {
@@ -55,7 +81,10 @@ export default function VideoPlayer({ fileId, title }) {
       const now = Date.now();
       if (!force && now - lastSaveRef.current < PROGRESS_SAVE_INTERVAL_MS) return;
       lastSaveRef.current = now;
-      writeProgress(fileId, video.currentTime, video.duration, title);
+      saveProgressRemote(fileId, video.currentTime, video.duration, title).catch(() => {
+        /* best-effort — a dropped save just means resume falls back a
+           little further next time, not worth surfacing to the viewer */
+      });
     },
     [fileId, title]
   );

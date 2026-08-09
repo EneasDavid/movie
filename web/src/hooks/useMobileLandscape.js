@@ -4,18 +4,27 @@ const MOBILE_QUERY = "(max-width: 900px)";
 
 // Mobile video-watching comfort: force landscape while on the watch page.
 //
-// Two layers, because neither alone is reliable across real devices:
-//  1. A CSS rotate transform (`forceRotateCss`) — works everywhere,
-//     needs no permission, applied whenever the viewport is mobile-width
-//     AND still physically portrait. No-ops itself the moment the real
-//     orientation becomes landscape (device physically rotated, or layer
-//     2 below succeeded), via a live matchMedia listener.
-//  2. `requestLandscape()` — Fullscreen API + Screen Orientation Lock.
-//     Only works from within a genuine user gesture (a tap), and Screen
-//     Orientation Lock has no Safari/iOS support at all — so this is
-//     best-effort, called again on the first tap where CSS-rotate alone
-//     already covers the same need in the meantime.
-export function useMobileLandscape(elementRef) {
+// Three layers, tried in order, because no single one is reliable across
+// real devices:
+//  1. `video.webkitEnterFullscreen()` — iOS Safari's native video
+//     fullscreen. This is the ONE reliable fullscreen path on iOS: the OS
+//     itself rotates the screen and owns the whole surface, so there's no
+//     leftover status bar and no collision with system overlays (e.g. the
+//     volume HUD) the way the CSS rotate fallback can have, since that
+//     fallback doesn't change what the OS thinks the orientation is.
+//     Trades our custom controls for Apple's native ones while active —
+//     an acceptable swap for a real, glitch-free fullscreen.
+//  2. `element.requestFullscreen()` — the standard API. Works on Android
+//     Chrome and modern desktop browsers; iOS Safari only gained this for
+//     arbitrary elements in 16.4, and even then behaves inconsistently
+//     for a <div> wrapping <video>, so it's the second choice, not first,
+//     on iOS.
+//  3. CSS rotate transform (`forceRotateCss`) — the last-resort fallback
+//     when neither fullscreen API is available/granted. Needs no
+//     permission, but system chrome (status bar, volume HUD) doesn't
+//     rotate with it, so it's visibly imperfect — only kicks in once 1
+//     and 2 have already failed.
+export function useMobileLandscape(elementRef, videoRef) {
   const [forceRotateCss, setForceRotateCss] = useState(false);
 
   useEffect(() => {
@@ -41,6 +50,20 @@ export function useMobileLandscape(elementRef) {
 
   const requestLandscape = useCallback(async () => {
     if (!window.matchMedia(MOBILE_QUERY).matches) return;
+
+    const video = videoRef?.current;
+    // iOS Safari: native video fullscreen. Real, OS-level, rotates and
+    // hides system chrome correctly — try this first and skip the rest
+    // if it works.
+    if (video && typeof video.webkitEnterFullscreen === "function") {
+      try {
+        video.webkitEnterFullscreen();
+        return;
+      } catch {
+        /* fall through to the generic Fullscreen API */
+      }
+    }
+
     const el = elementRef.current;
     try {
       if (el && !document.fullscreenElement) {
@@ -52,9 +75,9 @@ export function useMobileLandscape(elementRef) {
     try {
       await screen.orientation?.lock?.("landscape");
     } catch {
-      /* iOS Safari has no Orientation Lock API at all — expected */
+      /* no Orientation Lock support (notably iOS) — expected */
     }
-  }, [elementRef]);
+  }, [elementRef, videoRef]);
 
   return { forceRotateCss, requestLandscape };
 }

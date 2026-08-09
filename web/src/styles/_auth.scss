@@ -1,0 +1,315 @@
+@use "tokens" as t;
+@use "mixins" as m;
+
+.auth-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background:
+    radial-gradient(ellipse at top, rgba(229, 72, 77, 0.12), transparent 60%),
+    var(--bg);
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 380px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  opacity: 0;
+  transform: translateY(8px);
+  animation: auth-card-enter t.$dur-slow t.$ease-out forwards;
+}
+
+@keyframes auth-card-enter {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-card {
+    animation-duration: t.$dur-base;
+  }
+}
+
+.auth-brand {
+  align-self: center;
+  margin-bottom: 8px;
+}
+
+.auth-title {
+  margin: 0 0 4px;
+  font-size: 24px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.auth-label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+.auth-input {
+  background: var(--bg-elevated);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+  padding: 10px 12px;
+  color: var(--text);
+  font-size: 15px;
+  transition: border-color t.$dur-base t.$ease-hover;
+
+  &:focus {
+    border-color: var(--text);
+    outline: none;
+  }
+}
+
+.auth-name-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.auth-photo-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  align-self: center;
+  flex-direction: column;
+  text-align: center;
+}
+
+.auth-photo-picker {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--bg-elevated);
+  border: 1px dashed rgba(255, 255, 255, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color t.$dur-base t.$ease-hover;
+  @include m.press-feedback(0.96);
+
+  @include m.hover-only {
+    border-color: var(--text);
+  }
+}
+
+.auth-photo-preview {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.auth-photo-placeholder {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-dim);
+}
+
+.auth-photo-hint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-dimmer);
+}
+
+.password-checklist {
+  list-style: none;
+  margin: -6px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-dimmer);
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: color t.$dur-base t.$ease-hover;
+
+    &.ok {
+      color: var(--text-dim);
+    }
+  }
+}
+
+.password-checklist-icon {
+  width: 14px;
+  display: inline-flex;
+  justify-content: center;
+  color: var(--accent);
+
+  .password-checklist li:not(.ok) & {
+    color: var(--text-dimmer);
+  }
+}
+
+.auth-submit {
+  justify-content: center;
+  margin-top: 4px;
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
+}
+
+.auth-notice {
+  font-size: 13px;
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 4px;
+  background: var(--bg-elevated);
+  color: var(--text-dim);
+
+  &-error {
+    background: rgba(229, 72, 77, 0.12);
+    color: var(--accent-hover);
+  }
+}
+
+.auth-switch {
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-dim);
+  margin: 0;
+
+  a {
+    color: var(--text);
+    font-weight: 700;
+    @include m.hover-only {
+      text-decoration: underline;
+    }
+  }
+}
+
+.auth-loading {
+  min-height: 100vh;
+  background: var(--bg);
+}
+
+.avatar {
+  display: inline-flex;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: var(--bg-elevated-2);
+}
+
+.avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+// Email-verification reminder banner, shown on the catalog page.
+.verify-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 16px;
+  background: rgba(229, 72, 77, 0.15);
+  color: var(--text);
+  font-size: 13px;
+  text-align: center;
+
+  button {
+    font-weight: 700;
+    text-decoration: underline;
+    @include m.press-feedback(0.97);
+  }
+}
+
+// --- 404 ---
+.notfound {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 24px;
+  text-align: center;
+  background: #000;
+  overflow: hidden;
+}
+
+.notfound-stars {
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(1px 1px at 10% 20%, #fff, transparent),
+    radial-gradient(1px 1px at 80% 10%, #fff, transparent),
+    radial-gradient(1px 1px at 30% 70%, #fff, transparent),
+    radial-gradient(1px 1px at 65% 45%, #fff, transparent),
+    radial-gradient(1px 1px at 90% 80%, #fff, transparent),
+    radial-gradient(1px 1px at 45% 90%, #fff, transparent),
+    radial-gradient(1px 1px at 15% 55%, #fff, transparent);
+  background-repeat: repeat;
+  background-size: 400px 400px;
+  opacity: 0.5;
+}
+
+.notfound-title {
+  position: relative;
+  margin: 0;
+  max-width: 560px;
+  font-size: clamp(20px, 3.4vw, 28px);
+  font-weight: 800;
+  color: #ffe81f; // the Star Wars crawl yellow — a nod, not the logo itself
+  text-shadow: 0 0 24px rgba(255, 232, 31, 0.35);
+}
+
+.notfound-subtitle {
+  position: relative;
+  margin: 0 0 12px;
+  color: var(--text-dim);
+  font-size: 15px;
+}
+
+// Plain geometric silhouettes, not a redraw of any official ship — just
+// enough shape to read as "a little ship" against the starfield. Static,
+// low-opacity, tucked into corners so they never compete with the text.
+.notfound-ship {
+  position: absolute;
+  fill: rgba(255, 255, 255, 0.12);
+  pointer-events: none;
+
+  &-falcon {
+    width: clamp(120px, 18vw, 220px);
+    top: 12%;
+    left: 6%;
+    transform: rotate(-8deg);
+  }
+
+  &-destroyer {
+    width: clamp(140px, 22vw, 280px);
+    bottom: 10%;
+    right: 6%;
+    fill: rgba(255, 255, 255, 0.09);
+  }
+
+  @media (max-width: 640px) {
+    display: none;
+  }
+}

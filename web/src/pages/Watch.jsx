@@ -10,10 +10,10 @@ export default function Watch() {
 
   useEffect(() => {
     document.body.classList.add("player-body");
-    document.title = title ? `${title} — MOVIE` : "MOVIE";
+    document.title = title ? `${title} — df-orfeu` : "df-orfeu";
     return () => {
       document.body.classList.remove("player-body");
-      document.title = "MOVIE";
+      document.title = "df-orfeu";
     };
   }, [title]);
 

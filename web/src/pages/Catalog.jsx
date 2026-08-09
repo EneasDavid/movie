@@ -1,9 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Hero from "../components/catalog/Hero";
 import Row from "../components/catalog/Row";
 import CatalogSkeleton from "../components/catalog/CatalogSkeleton";
-import { fetchCatalog } from "../lib/api";
-import { allProgressEntries, MIN_RESUMABLE_SECONDS, NEAR_END_RATIO } from "../lib/progress";
+import { fetchCatalog, fetchProgress, removeProgress, resendVerification } from "../lib/api";
+import { MIN_RESUMABLE_SECONDS, NEAR_END_RATIO } from "../lib/progress";
+import { useAuth } from "../context/AuthContext";
+import Avatar from "../components/auth/Avatar";
 
 function pickHero(categories) {
   for (const cat of categories) {
@@ -15,10 +17,13 @@ function pickHero(categories) {
 }
 
 export default function Catalog() {
+  const { user, logout } = useAuth();
   const [catalog, setCatalog] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
+  const [progressEntries, setProgressEntries] = useState([]);
+  const [resendState, setResendState] = useState("idle"); // idle | sending | sent | error
 
   useEffect(() => {
     let cancelled = false;
@@ -32,6 +37,13 @@ export default function Catalog() {
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
+      });
+    fetchProgress()
+      .then((entries) => {
+        if (!cancelled) setProgressEntries(entries);
+      })
+      .catch(() => {
+        /* continue-watching is a nice-to-have — a failure here shouldn't block the catalog */
       });
     return () => {
       cancelled = true;
@@ -48,14 +60,41 @@ export default function Catalog() {
     return map;
   }, [categories]);
 
+  const progressByFileId = useMemo(() => {
+    const map = new Map();
+    for (const e of progressEntries) map.set(e.fileId, { time: e.time, duration: e.duration });
+    return map;
+  }, [progressEntries]);
+
   const continueWatchingItems = useMemo(() => {
-    const entries = allProgressEntries().filter((e) => {
-      if (e.time < MIN_RESUMABLE_SECONDS) return false;
-      if (e.duration > 0 && e.time / e.duration >= NEAR_END_RATIO) return false;
-      return itemsById.has(e.fileId);
+    return progressEntries
+      .filter((e) => {
+        if (e.time < MIN_RESUMABLE_SECONDS) return false;
+        if (e.duration > 0 && e.time / e.duration >= NEAR_END_RATIO) return false;
+        return itemsById.has(e.fileId);
+      })
+      .map((e) => itemsById.get(e.fileId));
+  }, [progressEntries, itemsById]);
+
+  const handleRemoveFromContinueWatching = useCallback((fileId) => {
+    // Optimistic: the row updates immediately, we don't make the user
+    // wait on a round-trip to see the card disappear.
+    setProgressEntries((prev) => prev.filter((e) => e.fileId !== fileId));
+    removeProgress(fileId).catch(() => {
+      // Best-effort — if it failed server-side, it'll just reappear next
+      // time the list is refetched. Not worth a disruptive error UI for.
     });
-    return entries.map((e) => itemsById.get(e.fileId));
-  }, [itemsById]);
+  }, []);
+
+  const handleResendVerification = useCallback(async () => {
+    setResendState("sending");
+    try {
+      await resendVerification();
+      setResendState("sent");
+    } catch {
+      setResendState("error");
+    }
+  }, []);
 
   const hero = useMemo(() => pickHero(categories), [categories]);
 
@@ -73,7 +112,7 @@ export default function Catalog() {
   return (
     <>
       <header className="topbar">
-        <a className="brand" href="/">MOVIE</a>
+        <a className="brand" href="/">df-orfeu</a>
         <div className="search">
           <input
             className="search-input"
@@ -85,7 +124,29 @@ export default function Catalog() {
             onChange={(e) => setQuery(e.target.value)}
           />
         </div>
+        <div className="topbar-user">
+          <Avatar hasAvatar={user?.hasAvatar} size={28} />
+          <span className="topbar-email">{user?.firstName || user?.email}</span>
+          <button className="topbar-logout" type="button" onClick={logout}>
+            Sair
+          </button>
+        </div>
       </header>
+
+      {user && !user.emailVerified && (
+        <div className="verify-banner" role="status">
+          {resendState === "sent" ? (
+            <span>Email de confirmação reenviado — confira sua caixa de entrada.</span>
+          ) : (
+            <>
+              <span>Confirme seu email para garantir o acesso à sua conta.</span>
+              <button type="button" onClick={handleResendVerification} disabled={resendState === "sending"}>
+                {resendState === "sending" ? "Enviando…" : "Reenviar confirmação"}
+              </button>
+            </>
+          )}
+        </div>
+      )}
 
       <main>
         {!q && <Hero item={hero} />}
@@ -110,9 +171,16 @@ export default function Catalog() {
         )}
 
         <div className="rows">
-          {visibleContinueWatching.length > 0 && <Row title="Continuar assistindo" items={visibleContinueWatching} />}
+          {visibleContinueWatching.length > 0 && (
+            <Row
+              title="Continuar assistindo"
+              items={visibleContinueWatching}
+              progressByFileId={progressByFileId}
+              onRemoveItem={handleRemoveFromContinueWatching}
+            />
+          )}
           {visibleCategories.map((cat) => (
-            <Row key={cat.id} title={cat.title} items={cat.items} />
+            <Row key={cat.id} title={cat.title} items={cat.items} progressByFileId={progressByFileId} />
           ))}
         </div>
       </main>

@@ -263,11 +263,19 @@
   transition: transform t.$dur-fast t.$ease-out;
 }
 
+// Centered inside the circular-arrow icon (same spot YouTube/most players
+// put the "10"/"15" — just under the arrow's own center of mass, in the
+// gap the arrow shape leaves). Absolute + translate rather than margins,
+// so it stays centered regardless of icon size (24px in the bottom bar,
+// 30px in the center cluster).
 .icon-badge {
   position: absolute;
-  font-size: 9px;
+  top: 56%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 10px;
   font-weight: 800;
-  margin-top: 15px;
+  line-height: 1;
   pointer-events: none;
 }
 

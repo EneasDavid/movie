@@ -1,7 +1,7 @@
 import { useRef } from "react";
 import Card from "./Card";
 
-export default function Row({ title, items }) {
+export default function Row({ title, items, progressByFileId, onRemoveItem }) {
   const trackRef = useRef(null);
 
   const scrollByCards = (dir) => {
@@ -21,7 +21,13 @@ export default function Row({ title, items }) {
         </button>
         <div className="row-track" ref={trackRef}>
           {items.map((item, i) => (
-            <Card key={item.id} item={item} index={i} />
+            <Card
+              key={item.id}
+              item={item}
+              index={i}
+              progress={progressByFileId?.get(item.id)}
+              onRemove={onRemoveItem}
+            />
           ))}
         </div>
         <button className="row-nav row-nav-next" type="button" aria-label="Próximo" onClick={() => scrollByCards(1)}>

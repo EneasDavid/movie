@@ -30,9 +30,29 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/health", middleware.Guard(a.RateLimiter, []string{http.MethodGet}, handlers.Health))
-	mux.HandleFunc("/api/catalog", middleware.Guard(a.RateLimiter, []string{http.MethodGet}, handlers.Catalog))
-	mux.HandleFunc("/api/stream", middleware.Guard(a.RateLimiter, []string{http.MethodGet, http.MethodHead}, handlers.Stream))
-	mux.HandleFunc("/api/thumbnail", middleware.Guard(a.RateLimiter, []string{http.MethodGet}, handlers.Thumbnail))
+
+	// Catalog/stream/thumbnail now require a logged-in session: with real
+	// accounts in play, "anyone with the deploy URL can watch without
+	// signing in" would make the auth system pointless as access control.
+	mux.HandleFunc("/api/catalog", middleware.Guard(a.RateLimiter, []string{http.MethodGet}, middleware.RequireAuth(a.Redis, handlers.Catalog)))
+	mux.HandleFunc("/api/stream", middleware.Guard(a.RateLimiter, []string{http.MethodGet, http.MethodHead}, middleware.RequireAuth(a.Redis, handlers.Stream)))
+	mux.HandleFunc("/api/thumbnail", middleware.Guard(a.RateLimiter, []string{http.MethodGet}, middleware.RequireAuth(a.Redis, handlers.Thumbnail)))
+
+	// Auth: a much stricter rate limit than the rest of the API — this is
+	// the one surface where "generous" becomes "brute-force tool".
+	mux.HandleFunc("POST /api/auth/signup", middleware.Guard(a.AuthRateLimiter, []string{http.MethodPost}, handlers.Signup))
+	mux.HandleFunc("POST /api/auth/login", middleware.Guard(a.AuthRateLimiter, []string{http.MethodPost}, handlers.Login))
+	mux.HandleFunc("POST /api/auth/logout", middleware.Guard(a.RateLimiter, []string{http.MethodPost}, handlers.Logout))
+	mux.HandleFunc("GET /api/auth/me", middleware.Guard(a.RateLimiter, []string{http.MethodGet}, middleware.RequireAuth(a.Redis, handlers.Me)))
+	mux.HandleFunc("GET /api/auth/verify", middleware.Guard(a.AuthRateLimiter, []string{http.MethodGet}, handlers.VerifyEmail))
+	mux.HandleFunc("POST /api/auth/resend-verification", middleware.Guard(a.AuthRateLimiter, []string{http.MethodPost}, middleware.RequireAuth(a.Redis, handlers.ResendVerification)))
+	mux.HandleFunc("GET /api/auth/avatar", middleware.Guard(a.RateLimiter, []string{http.MethodGet}, middleware.RequireAuth(a.Redis, handlers.GetAvatar)))
+	mux.HandleFunc("POST /api/auth/avatar", middleware.Guard(a.RateLimiter, []string{http.MethodPost}, middleware.RequireAuth(a.Redis, handlers.UploadAvatar)))
+
+	// Progress ("continuar assistindo"): per-user, requires a session.
+	mux.HandleFunc("GET /api/progress", middleware.Guard(a.RateLimiter, []string{http.MethodGet}, middleware.RequireAuth(a.Redis, handlers.ListProgress)))
+	mux.HandleFunc("PUT /api/progress", middleware.Guard(a.RateLimiter, []string{http.MethodPut}, middleware.RequireAuth(a.Redis, handlers.UpsertProgress)))
+	mux.HandleFunc("DELETE /api/progress", middleware.Guard(a.RateLimiter, []string{http.MethodDelete}, middleware.RequireAuth(a.Redis, handlers.DeleteProgressEntry)))
 
 	// Static frontend: served from the embedded filesystem (see
 	// internal/web), so behavior is identical regardless of the process's

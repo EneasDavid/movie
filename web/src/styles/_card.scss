@@ -68,6 +68,37 @@
       transform t.$dur-base t.$ease-out;
   }
 
+  &-remove {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.65);
+    color: var(--text);
+    opacity: 0;
+    transform: scale(0.9);
+    transition:
+      opacity t.$dur-fast t.$ease-out,
+      transform t.$dur-fast t.$ease-out,
+      background-color t.$dur-fast t.$ease-hover;
+
+    &:hover {
+      background: var(--accent);
+    }
+  }
+
+  @include m.hover-only {
+    .card-remove {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
   &-progress {
     position: absolute;
     left: 0;

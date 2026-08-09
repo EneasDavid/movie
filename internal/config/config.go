@@ -45,6 +45,13 @@ type Config struct {
 	RateLimitWindow    time.Duration // window size
 
 	DriveMaxInFlight int // max concurrent upstream requests to Drive per warm instance
+
+	// Transactional email (signup verification link). Falls back to
+	// logging the email instead of sending it when RESEND_API_KEY is
+	// unset — see internal/mailer.
+	ResendAPIKey  string
+	EmailFrom     string
+	PublicBaseURL string // absolute origin used to build links in emails, e.g. https://movie.vercel.app
 }
 
 func Load() Config {
@@ -67,6 +74,10 @@ func Load() Config {
 		RateLimitWindow:    getDuration("RATE_LIMIT_WINDOW", 10*time.Second),
 
 		DriveMaxInFlight: getInt("DRIVE_MAX_INFLIGHT", 8),
+
+		ResendAPIKey:  getEnv("RESEND_API_KEY", ""),
+		EmailFrom:     getEnv("EMAIL_FROM", "df-orfeu <onboarding@resend.dev>"),
+		PublicBaseURL: getEnv("PUBLIC_BASE_URL", ""),
 	}
 }
 
