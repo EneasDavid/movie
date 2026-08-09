@@ -6,16 +6,14 @@ import { useNavigate } from "react-router-dom";
 export default function NotFound() {
   const navigate = useNavigate();
 
-  // navigate(-1) silently does nothing if this page has no history to go
-  // back to (a bad URL typed/pasted directly, no prior in-app page) —
-  // fall back to the catalog so the button always does something.
-  const goBack = () => {
-    if (window.history.length > 1) {
-      navigate(-1);
-    } else {
-      navigate("/");
-    }
-  };
+  // Previously tried navigate(-1) when window.history.length > 1, falling
+  // back to "/" otherwise — but history.length counts the browser tab's
+  // whole session, not just in-app navigation, and mobile/webview browsers
+  // often report it as >1 even with no real previous page here. That sent
+  // "Voltar à base" back out of the app instead of to the catalog, which
+  // looked like the button doing nothing. The button says "back to base",
+  // so just always go to the base — no history heuristics needed.
+  const goBack = () => navigate("/");
 
   return (
     <div className="notfound">

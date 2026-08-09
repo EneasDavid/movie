@@ -1,7 +1,36 @@
 // Package httpx holds small HTTP helpers shared by every /api function.
 package httpx
 
-import "net/http"
+import (
+	"net/http"
+	"strings"
+)
+
+// ClientIP resolves the real client IP for a request that may have come
+// through Vercel's edge proxy. Behind that proxy, r.RemoteAddr is the
+// *proxy's* connection to our server — the same handful of addresses for
+// every visitor, not the visitor's own IP. Using it for per-client rate
+// limiting bucketed unrelated users (and devices) together: a burst of
+// requests from one phone could 429 the next person's login attempt from
+// a completely different device/network, which is exactly what looked
+// like a broken login on mobile. Vercel sets X-Forwarded-For (client IP
+// first, then each proxy hop) on every request it forwards, so prefer
+// that; fall back to X-Real-Ip, then to RemoteAddr for local dev where
+// neither header is present.
+func ClientIP(r *http.Request) string {
+	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+		if i := strings.IndexByte(xff, ','); i >= 0 {
+			xff = xff[:i]
+		}
+		if ip := strings.TrimSpace(xff); ip != "" {
+			return ip
+		}
+	}
+	if xrip := strings.TrimSpace(r.Header.Get("X-Real-Ip")); xrip != "" {
+		return xrip
+	}
+	return r.RemoteAddr
+}
 
 // SetSecurityHeaders applies a conservative baseline to every response:
 // no framing by other sites, no MIME sniffing, no referrer leakage, and a

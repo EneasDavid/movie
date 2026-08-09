@@ -5,6 +5,7 @@
 package middleware
 
 import (
+	"log"
 	"net/http"
 	"strings"
 
@@ -35,7 +36,8 @@ func Guard(rl *store.RateLimiter, allowedMethods []string, next http.HandlerFunc
 			return
 		}
 
-		if !rl.Allow(r.Context(), r.RemoteAddr) {
+		if ip := httpx.ClientIP(r); !rl.Allow(r.Context(), ip) {
+			log.Printf("ratelimit: blocked ip=%s path=%s method=%s", ip, r.URL.Path, r.Method)
 			w.Header().Set("Retry-After", "2")
 			httpx.WriteJSONError(w, http.StatusTooManyRequests, "muitas requisições, aguarde um instante")
 			return

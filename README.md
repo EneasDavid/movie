@@ -176,6 +176,36 @@ internal/
   (`@media (hover: hover) and (pointer: fine)`, touch não dispara hover
   falso), e `prefers-reduced-motion` respeitado em toda animação.
 
+## Problema conhecido: vídeo não reproduz (áudio incompatível)
+
+Se o player mostrar "arquivo de origem usa um formato de áudio
+incompatível com o navegador", o `/api/stream` está funcionando
+corretamente (200, bytes corretos) — o problema é que o arquivo de vídeo
+em si tem a trilha de áudio em **E-AC-3** (ou outro codec sem suporte em
+navegadores), e isso não é algo que dá pra corrigir no app: nenhum
+navegador tem decoder de E-AC-3, então o `<video>` recebe o arquivo certo
+e mesmo assim recusa a decodificar. Não é bug de rede, de auth nem de
+compartilhamento do Drive.
+
+Transcodificação em tempo real no servidor foi considerada e descartada:
+o deploy do Vercel ("Go Framework Preset") não tem `ffmpeg` disponível no
+runtime, e mesmo que tivesse, recodificar um filme inteiro em tempo real
+a cada request estouraria os limites de execução/memória do Vercel de
+longe.
+
+A correção real é uma vez só, na origem: use
+[`scripts/fix-audio-codec.sh`](scripts/fix-audio-codec.sh) para
+remuxar os arquivos problemáticos localmente (requer `ffmpeg`/`ffprobe`
+— `brew install ffmpeg`). Ele copia o vídeo sem recodificar (rápido, sem
+perda de qualidade) e converte só o áudio pra AAC:
+
+```bash
+./scripts/fix-audio-codec.sh /caminho/para/os/videos /caminho/de/saida
+```
+
+Depois, suba os arquivos de `/caminho/de/saida` pro Google Drive no lugar
+dos originais (e apague os antigos, pra não duplicar no catálogo).
+
 ## Próximos passos sugeridos
 
 - **App mobile**: o backend já é uma API JSON pura

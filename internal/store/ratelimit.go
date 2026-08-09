@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"strconv"
 	"time"
+
+	"movie/internal/httpx"
 )
 
 // RateLimiter is a fixed-window counter per client IP, backed by Redis so
@@ -48,7 +50,7 @@ func (l *RateLimiter) Allow(ctx context.Context, remoteAddr string) bool {
 // Middleware wraps a handler, rejecting over-limit requests with 429.
 func (l *RateLimiter) Middleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if !l.Allow(r.Context(), r.RemoteAddr) {
+		if !l.Allow(r.Context(), httpx.ClientIP(r)) {
 			w.Header().Set("Retry-After", "2")
 			http.Error(w, "limite de requisições excedido, aguarde um instante", http.StatusTooManyRequests)
 			return
