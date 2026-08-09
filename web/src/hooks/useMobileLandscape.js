@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect } from "react";
 
 const MOBILE_QUERY = "(max-width: 900px)";
 
 // Mobile video-watching comfort: force landscape while on the watch page.
 //
-// Three layers, tried in order, because no single one is reliable across
+// Two native layers, tried in order, because no single one is reliable across
 // real devices:
 //  1. `video.webkitEnterFullscreen()` — iOS Safari's native video
 //     fullscreen. This is the ONE reliable fullscreen path on iOS: the OS
@@ -19,24 +19,11 @@ const MOBILE_QUERY = "(max-width: 900px)";
 //     arbitrary elements in 16.4, and even then behaves inconsistently
 //     for a <div> wrapping <video>, so it's the second choice, not first,
 //     on iOS.
-//  3. CSS rotate transform (`forceRotateCss`) — the last-resort fallback
-//     when neither fullscreen API is available/granted. Needs no
-//     permission, but system chrome (status bar, volume HUD) doesn't
-//     rotate with it, so it's visibly imperfect — only kicks in once 1
-//     and 2 have already failed.
 export function useMobileLandscape(elementRef, videoRef) {
-  const [forceRotateCss, setForceRotateCss] = useState(false);
-
   useEffect(() => {
     if (!window.matchMedia(MOBILE_QUERY).matches) return undefined;
 
-    const portraitQuery = window.matchMedia("(orientation: portrait)");
-    const update = () => setForceRotateCss(portraitQuery.matches);
-    update();
-    portraitQuery.addEventListener("change", update);
-
     return () => {
-      portraitQuery.removeEventListener("change", update);
       try {
         screen.orientation?.unlock?.();
       } catch {
@@ -70,7 +57,7 @@ export function useMobileLandscape(elementRef, videoRef) {
         await el.requestFullscreen();
       }
     } catch {
-      /* denied/unsupported — CSS rotate fallback still covers it */
+      /* denied/unsupported — keep the normal, unrotated player */
     }
     try {
       await screen.orientation?.lock?.("landscape");
@@ -79,5 +66,5 @@ export function useMobileLandscape(elementRef, videoRef) {
     }
   }, [elementRef, videoRef]);
 
-  return { forceRotateCss, requestLandscape };
+  return { requestLandscape };
 }

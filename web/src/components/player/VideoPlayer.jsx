@@ -28,7 +28,7 @@ export default function VideoPlayer({ fileId, title }) {
   const [feedback, setFeedback] = useState(null); // { type: 'play'|'pause'|'back15'|'fwd15' }
 
   const { idle, resetIdle } = useIdleControls(isPlaying);
-  const { forceRotateCss, requestLandscape } = useMobileLandscape(playerRef, videoRef);
+  const { requestLandscape } = useMobileLandscape(playerRef, videoRef);
   const src = useMemo(() => streamURL(fileId), [fileId]);
 
   const flashFeedback = useCallback((type) => {
@@ -116,7 +116,8 @@ export default function VideoPlayer({ fileId, title }) {
   // active user gesture by the time this runs, fullscreen+landscape lock
   // succeeds immediately with no second tap needed. If not, this silently
   // no-ops and the guaranteed retry in togglePlay (a real, fresh tap)
-  // picks it up — plus the CSS rotate fallback covers the gap either way.
+  // picks it up. We deliberately do not rotate with CSS: that leaves the
+  // iOS status bar and volume HUD in portrait while the page is sideways.
   useEffect(() => {
     requestLandscape();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -302,7 +303,7 @@ export default function VideoPlayer({ fileId, title }) {
   return (
     <div
       ref={playerRef}
-      className={`player${forceRotateCss ? " force-rotate" : ""}`}
+      className="player"
       onMouseMove={resetIdle}
       onTouchStart={resetIdle}
     >

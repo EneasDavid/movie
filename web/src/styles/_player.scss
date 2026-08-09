@@ -19,21 +19,6 @@
     height: 100vh;
   }
 
-  // Fallback for phones where the Screen Orientation Lock API doesn't
-  // exist (iOS Safari, notably) or hasn't taken effect yet: rotate the
-  // whole player 90° via CSS and swap its footprint to fill the
-  // (now-landscape-shaped) content area. Cleared automatically the
-  // instant the real orientation becomes landscape — see
-  // useMobileLandscape, which only sets this class while still portrait.
-  &.force-rotate {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    width: 100vh;
-    height: 100vw;
-    transform: translate(-50%, -50%) rotate(90deg);
-    transform-origin: center center;
-  }
 }
 
 .video {
