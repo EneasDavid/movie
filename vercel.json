@@ -1,0 +1,12 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "go",
+  "headers": [
+    {
+      "source": "/(css|js|assets)/(.*)",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=86400, immutable" }]
+    }
+  ],
+  "cleanUrls": true,
+  "trailingSlash": false
+}

@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>MOVIE</title>
+  <meta name="description" content="Catálogo de vídeos" />
+  <meta name="robots" content="noindex" />
+  <link rel="stylesheet" href="/css/style.css" />
+  <link rel="icon" href="data:," />
+</head>
+<body>
+  <header class="topbar" id="topbar">
+    <a class="brand" href="/">MOVIE</a>
+    <div class="search">
+      <input
+        id="search-input"
+        class="search-input"
+        type="search"
+        placeholder="Buscar títulos..."
+        aria-label="Buscar títulos"
+        autocomplete="off"
+      />
+    </div>
+  </header>
+
+  <main id="main">
+    <section id="hero" class="hero" hidden>
+      <div class="hero-media">
+        <img id="hero-thumb" class="hero-thumb" alt="" />
+        <div class="hero-scrim"></div>
+      </div>
+      <div class="hero-content">
+        <h1 id="hero-title" class="hero-title"></h1>
+        <div class="hero-actions">
+          <a id="hero-play" class="btn btn-primary" href="#">
+            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M8 5v14l11-7z"/></svg>
+            Assistir
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <div id="status" class="status" role="status" aria-live="polite"></div>
+
+    <div id="rows" class="rows"></div>
+  </main>
+
+  <template id="row-template">
+    <section class="row">
+      <h2 class="row-title"></h2>
+      <div class="row-track-wrap">
+        <button class="row-nav row-nav-prev" aria-label="Anterior" type="button">‹</button>
+        <div class="row-track"></div>
+        <button class="row-nav row-nav-next" aria-label="Próximo" type="button">›</button>
+      </div>
+    </section>
+  </template>
+
+  <template id="card-template">
+    <a class="card" href="#">
+      <div class="card-thumb-wrap">
+        <img class="card-thumb" alt="" loading="lazy" />
+        <div class="card-progress" hidden><span class="card-progress-fill"></span></div>
+        <div class="card-hover-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="28" height="28"><path fill="currentColor" d="M8 5v14l11-7z"/></svg>
+        </div>
+      </div>
+      <div class="card-title"></div>
+    </a>
+  </template>
+
+  <script src="/js/app.js" defer></script>
+</body>
+</html>
