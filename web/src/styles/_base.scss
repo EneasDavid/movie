@@ -1,0 +1,91 @@
+@use "tokens" as t;
+@use "mixins" as m;
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+input {
+  font: inherit;
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: 2px;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  border-radius: 4px;
+  font-weight: 700;
+  font-size: 16px;
+  transition:
+    transform t.$dur-fast t.$ease-hover,
+    background-color t.$dur-fast t.$ease-hover,
+    opacity t.$dur-fast t.$ease-hover;
+  @include m.press-feedback(0.96);
+
+  &-primary {
+    background: var(--text);
+    color: #000;
+
+    @include m.hover-only {
+      background: rgba(245, 245, 247, 0.85);
+    }
+  }
+}
+
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  border-radius: 50%;
+  color: var(--text);
+  position: relative;
+  transition:
+    transform t.$dur-fast t.$ease-hover,
+    background-color t.$dur-fast t.$ease-hover,
+    opacity t.$dur-fast t.$ease-hover;
+  @include m.press-feedback(0.9);
+
+  @include m.hover-only {
+    background: rgba(255, 255, 255, 0.12);
+  }
+}

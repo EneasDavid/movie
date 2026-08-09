@@ -1,0 +1,111 @@
+@use "tokens" as t;
+@use "mixins" as m;
+
+.card {
+  flex: 0 0 auto;
+  width: clamp(140px, 16vw, 220px);
+  opacity: 0;
+  transform: translateY(8px) scale(0.98);
+  animation: card-enter t.$dur-slow t.$ease-out forwards;
+  animation-delay: calc(var(--i, 0) * 40ms);
+
+  @include m.mobile {
+    width: clamp(110px, 32vw, 150px);
+  }
+
+  &-thumb-wrap {
+    position: relative;
+    aspect-ratio: 2 / 3;
+    border-radius: t.$radius;
+    overflow: hidden;
+    background: var(--bg-elevated);
+    transform-origin: center;
+    transition:
+      transform t.$dur-base t.$ease-out,
+      box-shadow t.$dur-base t.$ease-out;
+  }
+
+  &-thumb {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  @include m.hover-only {
+    .card-thumb-wrap {
+      transform: scale(1.08);
+      box-shadow: var(--shadow);
+      z-index: 2;
+    }
+    .card-hover-icon {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  &:focus-visible .card-thumb-wrap {
+    transform: scale(1.08);
+  }
+
+  &-hover-icon {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    background: rgba(0, 0, 0, 0.25);
+    opacity: 0;
+    transform: scale(0.9);
+    transition:
+      opacity t.$dur-base t.$ease-out,
+      transform t.$dur-base t.$ease-out;
+  }
+
+  &-progress {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 3px;
+    background: rgba(255, 255, 255, 0.25);
+
+    &-fill {
+      display: block;
+      height: 100%;
+      background: var(--accent);
+    }
+  }
+
+  &-title {
+    margin-top: 8px;
+    font-size: 13px;
+    color: var(--text-dim);
+    @include m.ellipsis;
+  }
+}
+
+@keyframes card-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero,
+  .card {
+    animation: fade-in t.$dur-base t.$ease-hover forwards;
+  }
+  .card-thumb-wrap,
+  .card-hover-icon {
+    transition-property: opacity;
+  }
+  .card:hover .card-thumb-wrap {
+    transform: none;
+  }
+}

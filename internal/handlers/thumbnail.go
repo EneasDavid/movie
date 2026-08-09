@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"io"
+	"log"
 	"net/http"
 	"time"
 
@@ -19,8 +20,8 @@ const maxThumbnailBytes = 5 << 20 // 5MB safety cap
 // never talks to googleusercontent.com directly, keeping every request on
 // our own domain (simpler CSP, one cache/rate-limit surface).
 //
-// Method/rate-limit/security-header handling lives in the thin /api
-// wrapper (see api/thumbnail.go), not here.
+// Method/rate-limit/security-header handling lives in the thin route
+// wrapper (see cmd/server/main.go), not here.
 func Thumbnail(w http.ResponseWriter, r *http.Request) {
 	a := appctx.Get()
 
@@ -43,6 +44,7 @@ func Thumbnail(w http.ResponseWriter, r *http.Request) {
 
 	srcURL, err := a.Drive.ThumbnailSourceURL(ctx, fileID)
 	if err != nil {
+		log.Printf("thumbnail: ThumbnailSourceURL(%s) failed: %v", fileID, err)
 		httpx.WriteJSONError(w, http.StatusNotFound, "thumbnail não disponível")
 		return
 	}
@@ -54,6 +56,7 @@ func Thumbnail(w http.ResponseWriter, r *http.Request) {
 	}
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil || resp.StatusCode != http.StatusOK {
+		log.Printf("thumbnail: fetch source failed for %s: err=%v status=%v", fileID, err, respStatus(resp))
 		httpx.WriteJSONError(w, http.StatusBadGateway, "erro ao buscar thumbnail")
 		return
 	}
@@ -75,4 +78,11 @@ func Thumbnail(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "public, max-age=1800, immutable")
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(data)
+}
+
+func respStatus(resp *http.Response) int {
+	if resp == nil {
+		return 0
+	}
+	return resp.StatusCode
 }

@@ -38,12 +38,12 @@ func NewClient(apiKey string, maxInFlight int) *Client {
 
 // rawFile mirrors the subset of the Drive `File` resource we care about.
 type rawFile struct {
-	ID                string `json:"id"`
-	Name              string `json:"name"`
-	MimeType          string `json:"mimeType"`
-	ThumbnailLink     string `json:"thumbnailLink"`
-	Size              string `json:"size"`
-	CreatedTime       string `json:"createdTime"`
+	ID                 string `json:"id"`
+	Name               string `json:"name"`
+	MimeType           string `json:"mimeType"`
+	ThumbnailLink      string `json:"thumbnailLink"`
+	Size               string `json:"size"`
+	CreatedTime        string `json:"createdTime"`
 	VideoMediaMetadata *struct {
 		DurationMillis string `json:"durationMillis"`
 		Width          int    `json:"width"`
@@ -58,14 +58,14 @@ type listResponse struct {
 
 // File is our simplified, JSON-friendly view of a Drive item.
 type File struct {
-	ID            string `json:"id"`
-	Name          string `json:"name"`
-	MimeType      string `json:"mimeType"`
-	IsFolder      bool   `json:"isFolder"`
-	ThumbnailURL  string `json:"thumbnailUrl,omitempty"` // proxied, not the raw Drive link
-	SizeBytes     int64  `json:"sizeBytes,omitempty"`
-	DurationMs    int64  `json:"durationMs,omitempty"`
-	CreatedTime   string `json:"createdTime,omitempty"`
+	ID           string `json:"id"`
+	Name         string `json:"name"`
+	MimeType     string `json:"mimeType"`
+	IsFolder     bool   `json:"isFolder"`
+	ThumbnailURL string `json:"thumbnailUrl,omitempty"` // proxied, not the raw Drive link
+	SizeBytes    int64  `json:"sizeBytes,omitempty"`
+	DurationMs   int64  `json:"durationMs,omitempty"`
+	CreatedTime  string `json:"createdTime,omitempty"`
 }
 
 var apiErrStatus = map[int]string{

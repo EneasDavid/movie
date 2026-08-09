@@ -1,10 +1,11 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "go",
+  "buildCommand": "npm --prefix web ci && npm --prefix web run build && go build -o server ./cmd/server",
   "headers": [
     {
-      "source": "/(css|js|assets)/(.*)",
-      "headers": [{ "key": "Cache-Control", "value": "public, max-age=86400, immutable" }]
+      "source": "/assets/(.*)",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]
     }
   ],
   "cleanUrls": true,

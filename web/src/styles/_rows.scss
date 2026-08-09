@@ -1,0 +1,68 @@
+@use "tokens" as t;
+@use "mixins" as m;
+
+.rows {
+  padding: 0 0 64px;
+  display: flex;
+  flex-direction: column;
+  gap: 36px;
+}
+
+.row {
+  &-title {
+    font-size: clamp(16px, 2vw, 20px);
+    font-weight: 700;
+    margin: 0 0 10px;
+    padding: 0 clamp(16px, 4vw, 48px);
+  }
+
+  &-track-wrap {
+    position: relative;
+  }
+
+  &-track {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    scroll-behavior: smooth;
+    padding: 4px clamp(16px, 4vw, 48px) 12px;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+  }
+
+  &-nav {
+    position: absolute;
+    top: 0;
+    bottom: 12px;
+    width: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    color: var(--text);
+    opacity: 0;
+    z-index: 5;
+    transition: opacity t.$dur-base t.$ease-hover;
+
+    &-prev {
+      left: 0;
+      background: linear-gradient(to right, rgba(16, 16, 20, 0.9), transparent);
+    }
+
+    &-next {
+      right: 0;
+      background: linear-gradient(to left, rgba(16, 16, 20, 0.9), transparent);
+    }
+  }
+
+  &-track-wrap {
+    @include m.hover-only {
+      .row-nav {
+        opacity: 1;
+      }
+    }
+  }
+}

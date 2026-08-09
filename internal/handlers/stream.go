@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -54,6 +55,7 @@ func Stream(w http.ResponseWriter, r *http.Request) {
 
 	meta, err := getMeta(ctx, a, fileID)
 	if err != nil {
+		log.Printf("stream: getMeta(%s) failed: %v", fileID, err)
 		httpx.WriteJSONError(w, http.StatusBadGateway, "não foi possível obter informações do vídeo")
 		return
 	}
@@ -225,6 +227,7 @@ func serveFromCache(ctx context.Context, w http.ResponseWriter, a *appctx.App, f
 func servePassThrough(ctx context.Context, w http.ResponseWriter, a *appctx.App, fileID, rangeHeader string, hasRange bool, size int64) {
 	resp, release, err := a.Drive.OpenStream(ctx, fileID, rangeHeader)
 	if err != nil {
+		log.Printf("stream: OpenStream(%s) failed: %v", fileID, err)
 		httpx.WriteJSONError(w, http.StatusBadGateway, "erro ao transmitir vídeo")
 		return
 	}

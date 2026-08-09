@@ -1,0 +1,41 @@
+@use "sass:color";
+@use "tokens" as t;
+
+// Gate hover-only motion to devices that actually have a precise pointer
+// — touchscreens fire a false :hover on tap otherwise (animate skill,
+// rule 7: "Reduced motion and pointer gating").
+@mixin hover-only {
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      @content;
+    }
+  }
+}
+
+@mixin mobile {
+  @media (max-width: t.$breakpoint-sm) {
+    @content;
+  }
+}
+
+// Standard button "press" feedback: quick scale-down on :active, never
+// larger than a subtle press. Shared so every clickable control feels
+// consistent.
+@mixin press-feedback($scale: 0.94) {
+  transition: transform t.$dur-fast t.$ease-hover;
+  &:active {
+    transform: scale($scale);
+  }
+}
+
+@mixin ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// A slightly darker/lighter shade of the accent, derived at build time —
+// demonstrates real SCSS color math rather than hand-picking hex values.
+@function accent-shade($amount) {
+  @return color.adjust(t.$accent, $lightness: $amount);
+}

@@ -1,0 +1,56 @@
+name: CI
+
+# Quality gate only — Vercel deploys automatically via its own GitHub
+# integration on every push to main (that's the "Cloning
+# github.com/.../movie" build log you get in the Vercel dashboard), so
+# there is no separate deploy job here. This workflow's job is to catch
+# build/format/vet problems before they ever reach that deploy.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm --prefix web ci
+
+      - name: Build frontend (React/SCSS → internal/web/static)
+        run: npm --prefix web run build
+
+      - name: Lint frontend
+        run: npm --prefix web run lint
+
+      - name: Check Go formatting
+        run: |
+          fmt_out="$(gofmt -l .)"
+          if [ -n "$fmt_out" ]; then
+            echo "The following files are not gofmt-formatted:"
+            echo "$fmt_out"
+            exit 1
+          fi
+
+      - name: Vet
+        run: go vet ./cmd/... ./internal/...
+
+      - name: Build (validates the exact binary Vercel produces)
+        run: go build -o bin/server ./cmd/server
+
+      - name: Test
+        run: go test ./cmd/... ./internal/...

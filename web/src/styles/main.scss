@@ -1,0 +1,12 @@
+// Single entry point imported once from src/main.jsx. Partial order
+// matters a little (tokens/mixins first since everything else @uses
+// them), otherwise each partial owns one area of the UI.
+@use "tokens";
+@use "mixins";
+@use "base";
+@use "topbar";
+@use "hero";
+@use "status";
+@use "rows";
+@use "card";
+@use "player";

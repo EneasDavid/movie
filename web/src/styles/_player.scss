@@ -1,0 +1,253 @@
+@use "tokens" as t;
+@use "mixins" as m;
+
+.player-body {
+  margin: 0;
+  background: #000;
+  overflow: hidden;
+  height: 100vh;
+}
+
+.player {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  background: #000;
+
+  &:fullscreen {
+    width: 100vw;
+    height: 100vh;
+  }
+}
+
+.video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #000;
+}
+
+.center-spinner {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.spinner {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: 4px solid rgba(255, 255, 255, 0.25);
+  border-top-color: var(--text);
+  animation: spin 900ms linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.center-feedback {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  background: rgba(0, 0, 0, 0.6);
+  border-radius: 50%;
+  width: 84px;
+  height: 84px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  pointer-events: none;
+  // A keyframe animation (not a transition) so it reliably plays every
+  // time the element mounts — React remounts it via a changing `key`,
+  // and transitions don't animate from an element's very first paint.
+  animation: feedback-pulse 700ms t.$ease-out forwards;
+
+  svg {
+    width: 36px;
+    height: 36px;
+  }
+}
+
+@keyframes feedback-pulse {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.9);
+  }
+  20% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .center-feedback {
+    animation-duration: 500ms;
+    // Keep the opacity fade (aids comprehension of "your input landed"),
+    // drop the scale — rule 7: gentler, not zero.
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+.error-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  background: rgba(0, 0, 0, 0.85);
+  text-align: center;
+  padding: 24px;
+}
+
+.controls {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  opacity: 1;
+  transition: opacity t.$dur-slow t.$ease-hover;
+
+  &.idle {
+    opacity: 0;
+    cursor: none;
+  }
+
+  &-top {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px clamp(16px, 4vw, 40px);
+    background: linear-gradient(to bottom, rgba(0, 0, 0, 0.75), transparent);
+  }
+
+  &-bottom {
+    padding: 0 clamp(16px, 4vw, 40px) 20px;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.85), transparent);
+    padding-top: 60px;
+  }
+
+  &-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  &-left,
+  &-right {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+}
+
+.video-title {
+  font-size: 18px;
+  font-weight: 700;
+  margin: 0;
+  @include m.ellipsis;
+}
+
+.progress-wrap {
+  padding: 8px 0 14px;
+}
+
+.progress-bar {
+  position: relative;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.25);
+  cursor: pointer;
+  transition: height t.$dur-fast t.$ease-hover;
+
+  &:hover,
+  &:focus-visible {
+    height: 6px;
+
+    .progress-handle {
+      transform: translate(-50%, -50%) scale(1);
+    }
+  }
+}
+
+.progress-buffered,
+.progress-played {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  border-radius: 2px;
+}
+
+.progress-buffered {
+  background: rgba(255, 255, 255, 0.4);
+  width: 0%;
+  transition: width 200ms linear;
+}
+
+.progress-played {
+  background: var(--accent);
+  width: 0%;
+  transition: width 100ms linear;
+}
+
+.progress-handle {
+  position: absolute;
+  top: 50%;
+  left: 0%;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: var(--accent);
+  transform: translate(-50%, -50%) scale(0);
+  transition: transform t.$dur-fast t.$ease-out;
+}
+
+.icon-badge {
+  position: absolute;
+  font-size: 9px;
+  font-weight: 800;
+  margin-top: 15px;
+  pointer-events: none;
+}
+
+.volume-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+
+  @include m.mobile {
+    display: none;
+  }
+}
+
+.volume-slider {
+  width: 90px;
+  accent-color: var(--accent);
+}
+
+.time-display {
+  font-size: 13px;
+  color: var(--text-dim);
+  margin-left: 4px;
+  font-variant-numeric: tabular-nums;
+}
+
+.time-sep {
+  margin: 0 4px;
+  opacity: 0.6;
+}
