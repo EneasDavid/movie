@@ -269,7 +269,6 @@ export default function VideoPlayer({ fileId, title }) {
       onMouseMove={resetIdle}
       onTouchStart={resetIdle}
     >
-      {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
       <video
         ref={videoRef}
         className="video"

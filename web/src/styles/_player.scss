@@ -171,6 +171,36 @@
   }
 }
 
+// Play/pause + ±15s, centered on screen — the primary controls a viewer
+// reaches for, kept independent of the top/bottom bars so they read as
+// one deliberate cluster rather than getting lost in a corner. Fades
+// with everything else in .controls (it's a child, same opacity
+// transition), no separate idle logic needed.
+.center-controls {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  gap: clamp(24px, 6vw, 56px);
+}
+
+.center-btn {
+  width: 56px;
+  height: 56px;
+
+  &-play {
+    width: 72px;
+    height: 72px;
+    background: rgba(255, 255, 255, 0.12);
+  }
+
+  @include m.hover-only {
+    background: rgba(255, 255, 255, 0.18);
+  }
+}
+
 .video-title {
   font-size: 18px;
   font-weight: 700;

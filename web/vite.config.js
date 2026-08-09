@@ -8,7 +8,7 @@ import react from "@vitejs/plugin-react";
 // Makefile for the combined build command.
 export default defineConfig({
   plugins: [react()],
-  root: __dirname,
+  root: import.meta.dirname,
   base: "/",
   build: {
     outDir: "../internal/web/static",

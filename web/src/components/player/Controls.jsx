@@ -80,6 +80,30 @@ export default function Controls({
         <h1 className="video-title">{title}</h1>
       </div>
 
+      <div className="center-controls">
+        <button className="icon-btn center-btn" type="button" onClick={() => onSeekBy(-15)} aria-label="Voltar 15 segundos">
+          <svg viewBox="0 0 24 24" width="30" height="30">
+            <path fill="currentColor" d="M13 3a9 9 0 0 0-9 9H1l4 4 4-4H6a7 7 0 1 1 2.05 4.95l-1.42 1.42A9 9 0 1 0 13 3z" />
+          </svg>
+          <span className="icon-badge">15</span>
+        </button>
+
+        <button className="icon-btn center-btn center-btn-play" type="button" onClick={onTogglePlay} aria-label={isPlaying ? "Pausar" : "Reproduzir"}>
+          {isPlaying ? (
+            <svg viewBox="0 0 24 24" width="40" height="40"><path fill="currentColor" d="M6 5h4v14H6zM14 5h4v14h-4z" /></svg>
+          ) : (
+            <svg viewBox="0 0 24 24" width="40" height="40"><path fill="currentColor" d="M8 5v14l11-7z" /></svg>
+          )}
+        </button>
+
+        <button className="icon-btn center-btn" type="button" onClick={() => onSeekBy(15)} aria-label="Avançar 15 segundos">
+          <svg viewBox="0 0 24 24" width="30" height="30" style={{ transform: "scaleX(-1)" }}>
+            <path fill="currentColor" d="M13 3a9 9 0 0 0-9 9H1l4 4 4-4H6a7 7 0 1 1 2.05 4.95l-1.42 1.42A9 9 0 1 0 13 3z" />
+          </svg>
+          <span className="icon-badge">15</span>
+        </button>
+      </div>
+
       <div className="controls-bottom">
         <div className="progress-wrap">
           <div
@@ -103,28 +127,6 @@ export default function Controls({
 
         <div className="controls-row">
           <div className="controls-left">
-            <button className="icon-btn" type="button" onClick={onTogglePlay} aria-label={isPlaying ? "Pausar" : "Reproduzir"}>
-              {isPlaying ? (
-                <svg viewBox="0 0 24 24" width="26" height="26"><path fill="currentColor" d="M6 5h4v14H6zM14 5h4v14h-4z" /></svg>
-              ) : (
-                <svg viewBox="0 0 24 24" width="26" height="26"><path fill="currentColor" d="M8 5v14l11-7z" /></svg>
-              )}
-            </button>
-
-            <button className="icon-btn" type="button" onClick={() => onSeekBy(-15)} aria-label="Voltar 15 segundos">
-              <svg viewBox="0 0 24 24" width="24" height="24">
-                <path fill="currentColor" d="M13 3a9 9 0 0 0-9 9H1l4 4 4-4H6a7 7 0 1 1 2.05 4.95l-1.42 1.42A9 9 0 1 0 13 3z" />
-              </svg>
-              <span className="icon-badge">15</span>
-            </button>
-
-            <button className="icon-btn" type="button" onClick={() => onSeekBy(15)} aria-label="Avançar 15 segundos">
-              <svg viewBox="0 0 24 24" width="24" height="24" style={{ transform: "scaleX(-1)" }}>
-                <path fill="currentColor" d="M13 3a9 9 0 0 0-9 9H1l4 4 4-4H6a7 7 0 1 1 2.05 4.95l-1.42 1.42A9 9 0 1 0 13 3z" />
-              </svg>
-              <span className="icon-badge">15</span>
-            </button>
-
             <div className="volume-group">
               <button className="icon-btn" type="button" onClick={onToggleMute} aria-label={muted ? "Ativar som" : "Mudo"}>
                 {muted || volume === 0 ? (

@@ -38,7 +38,7 @@ export default function Catalog() {
     };
   }, []);
 
-  const categories = catalog?.categories || [];
+  const categories = useMemo(() => catalog?.categories || [], [catalog]);
 
   const itemsById = useMemo(() => {
     const map = new Map();
