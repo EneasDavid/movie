@@ -5,13 +5,17 @@
   min-height: 100vh;
 }
 
-// This page has no hero to bleed behind the fixed topbar, so it just
-// keeps the top padding every <main> reserves by default (_base.scss) —
-// nothing to cancel here, unlike .hero.
 .profile-main {
   max-width: 640px;
   margin: 0 auto;
+  // The `padding` shorthand always sets all four sides, including
+  // padding-top: 0 here — which, at this selector's higher specificity,
+  // silently overrode <main>'s topbar-reserving padding-top from
+  // _base.scss. Same overlap bug as the catalog rows had, reintroduced
+  // by accident. Restate it explicitly instead of depending on cascade
+  // order between two different files.
   padding: 0 clamp(16px, 4vw, 48px) 64px;
+  padding-top: t.$topbar-height;
 }
 
 .profile-back {

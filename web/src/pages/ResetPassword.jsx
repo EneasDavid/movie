@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { resetPassword, ApiError } from "../lib/api";
 import { passwordChecklist, isPasswordValid } from "../lib/passwordRules";
+import PasswordField from "../components/auth/PasswordField";
 
 export default function ResetPassword() {
   const [params] = useSearchParams();
@@ -60,17 +61,12 @@ export default function ResetPassword() {
         <h1 className="auth-title">Redefinir senha</h1>
 
         <form className="auth-form" onSubmit={handleSubmit}>
-          <label className="auth-label">
-            Nova senha
-            <input
-              className="auth-input"
-              type="password"
-              autoComplete="new-password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-          </label>
+          <PasswordField
+            label="Nova senha"
+            autoComplete="new-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
 
           <ul className="password-checklist">
             {checklist.map((rule) => (
@@ -81,17 +77,12 @@ export default function ResetPassword() {
             ))}
           </ul>
 
-          <label className="auth-label">
-            Confirmar nova senha
-            <input
-              className="auth-input"
-              type="password"
-              autoComplete="new-password"
-              required
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-            />
-          </label>
+          <PasswordField
+            label="Confirmar nova senha"
+            autoComplete="new-password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+          />
 
           {error && <p className="auth-notice auth-notice-error">{error}</p>}
 

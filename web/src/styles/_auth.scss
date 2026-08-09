@@ -77,6 +77,43 @@
   }
 }
 
+.auth-password-wrap {
+  position: relative;
+  display: flex;
+
+  .auth-input {
+    flex: 1;
+    // Room for the toggle button so typed characters never run under it.
+    padding-right: 40px;
+  }
+}
+
+.auth-password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 4px;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  color: var(--text-dimmer);
+  transition:
+    color t.$dur-base t.$ease-hover,
+    background-color t.$dur-base t.$ease-hover;
+
+  @include m.hover-only {
+    color: var(--text);
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  &[aria-pressed="true"] {
+    color: var(--text);
+  }
+}
+
 .auth-name-row {
   display: grid;
   grid-template-columns: 1fr 1fr;

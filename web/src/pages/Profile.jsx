@@ -6,6 +6,7 @@ import Row from "../components/catalog/Row";
 import { ApiError, fetchProgress, removeProgress } from "../lib/api";
 import { MIN_RESUMABLE_SECONDS, NEAR_END_RATIO } from "../lib/progress";
 import { passwordChecklist, isPasswordValid } from "../lib/passwordRules";
+import PasswordField from "../components/auth/PasswordField";
 
 const MAX_PHOTO_BYTES = 3 * 1024 * 1024;
 
@@ -213,28 +214,18 @@ export default function Profile() {
         <section className="profile-section">
           <h2 className="profile-section-title">Trocar senha</h2>
           <form className="auth-form profile-form" onSubmit={handlePasswordSubmit}>
-            <label className="auth-label">
-              Senha atual
-              <input
-                className="auth-input"
-                type="password"
-                autoComplete="current-password"
-                required
-                value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-              />
-            </label>
-            <label className="auth-label">
-              Nova senha
-              <input
-                className="auth-input"
-                type="password"
-                autoComplete="new-password"
-                required
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-              />
-            </label>
+            <PasswordField
+              label="Senha atual"
+              autoComplete="current-password"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+            />
+            <PasswordField
+              label="Nova senha"
+              autoComplete="new-password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+            />
             <ul className="password-checklist">
               {checklist.map((rule) => (
                 <li key={rule.key} className={rule.ok ? "ok" : ""}>
@@ -243,17 +234,12 @@ export default function Profile() {
                 </li>
               ))}
             </ul>
-            <label className="auth-label">
-              Confirmar nova senha
-              <input
-                className="auth-input"
-                type="password"
-                autoComplete="new-password"
-                required
-                value={confirmNewPassword}
-                onChange={(e) => setConfirmNewPassword(e.target.value)}
-              />
-            </label>
+            <PasswordField
+              label="Confirmar nova senha"
+              autoComplete="new-password"
+              value={confirmNewPassword}
+              onChange={(e) => setConfirmNewPassword(e.target.value)}
+            />
             {passwordError && <p className="auth-notice auth-notice-error">{passwordError}</p>}
             {passwordNotice && <p className="auth-notice">{passwordNotice}</p>}
             <button className="btn btn-primary auth-submit" type="submit" disabled={savingPassword}>

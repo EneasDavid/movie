@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { ApiError } from "../lib/api";
+import PasswordField from "../components/auth/PasswordField";
 
 export default function Login() {
   const { user, login } = useAuth();
@@ -67,17 +68,12 @@ export default function Login() {
               onChange={(e) => setEmail(e.target.value)}
             />
           </label>
-          <label className="auth-label">
-            Senha
-            <input
-              className="auth-input"
-              type="password"
-              autoComplete="current-password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-          </label>
+          <PasswordField
+            label="Senha"
+            autoComplete="current-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
 
           {error && <p className="auth-notice auth-notice-error">{error}</p>}
 

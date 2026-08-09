@@ -3,6 +3,7 @@ import { Link, Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { ApiError } from "../lib/api";
 import { passwordChecklist, isPasswordValid } from "../lib/passwordRules";
+import PasswordField from "../components/auth/PasswordField";
 
 const MAX_PHOTO_BYTES = 3 * 1024 * 1024;
 
@@ -135,17 +136,12 @@ export default function Signup() {
             />
           </label>
 
-          <label className="auth-label">
-            Senha
-            <input
-              className="auth-input"
-              type="password"
-              autoComplete="new-password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-          </label>
+          <PasswordField
+            label="Senha"
+            autoComplete="new-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
 
           <ul className="password-checklist">
             {checklist.map((rule) => (
@@ -156,17 +152,12 @@ export default function Signup() {
             ))}
           </ul>
 
-          <label className="auth-label">
-            Confirmar senha
-            <input
-              className="auth-input"
-              type="password"
-              autoComplete="new-password"
-              required
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-            />
-          </label>
+          <PasswordField
+            label="Confirmar senha"
+            autoComplete="new-password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+          />
 
           {error && <p className="auth-notice auth-notice-error">{error}</p>}
 
