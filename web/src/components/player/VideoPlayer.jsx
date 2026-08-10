@@ -25,11 +25,12 @@ export default function VideoPlayer({ fileId, title, version }) {
   const [muted, setMuted] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [error, setError] = useState(null);
+  const [retryNonce, setRetryNonce] = useState(0);
   const [feedback, setFeedback] = useState(null); // { type: 'play'|'pause'|'back15'|'fwd15' }
 
   const { idle, resetIdle } = useIdleControls(isPlaying);
   const { requestLandscape } = useMobileLandscape(playerRef, videoRef);
-  const src = useMemo(() => streamURL(fileId, version), [fileId, version]);
+  const src = useMemo(() => streamURL(fileId, retryNonce ? `${version}-${retryNonce}` : version), [fileId, version, retryNonce]);
 
   const flashFeedback = useCallback((type) => {
     setFeedback({ type, key: Date.now() });
@@ -187,6 +188,22 @@ export default function VideoPlayer({ fileId, title, version }) {
     resetIdle();
   }, [resetIdle]);
 
+  const retryPlayback = useCallback(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    const nonce = Date.now();
+    const retrySrc = streamURL(fileId, `${version}-${nonce}`);
+    setError(null);
+    setIsBuffering(true);
+    setRetryNonce(nonce);
+    // Assign synchronously inside the button gesture so iOS permits both
+    // the new media request and native fullscreen playback.
+    video.src = retrySrc;
+    video.load();
+    video.play().catch(() => setError("Não foi possível iniciar o vídeo. Verifique a conexão e tente novamente."));
+    requestLandscape();
+  }, [fileId, requestLandscape, version]);
+
   // --- Video element event wiring ---
   useEffect(() => {
     const video = videoRef.current;
@@ -210,19 +227,12 @@ export default function VideoPlayer({ fileId, title, version }) {
     };
     const onError = () => {
       const code = video.error?.code;
-      // code 4 (MEDIA_ERR_SRC_NOT_SUPPORTED) here almost never means the
-      // stream request failed — /api/stream already returned 200 with
-      // real bytes by the time the <video> element gets this far. It
-      // means the browser fetched the file but refuses to decode it,
-      // which in this catalog has consistently traced back to source
-      // files with an E-AC-3 audio track browsers can't play. Pointing
-      // people at "check Drive sharing" sent them chasing the wrong
-      // fix, so this names the actual cause instead.
-      setError(
-        code === 4
-          ? "Este vídeo não pôde ser reproduzido: o arquivo de origem usa um formato de áudio incompatível com o navegador (não é um problema de permissão ou conexão)."
-          : "Ocorreu um erro ao carregar o vídeo."
-      );
+      const messages = {
+        2: "A conexão com o vídeo foi interrompida. Tente novamente.",
+        3: "O navegador não conseguiu decodificar os dados recebidos. Tente recarregar o vídeo.",
+        4: "O navegador não conseguiu abrir o stream de vídeo. Tente novamente para buscar a versão atualizada.",
+      };
+      setError(messages[code] || "Ocorreu um erro ao carregar o vídeo.");
       setIsBuffering(false);
     };
     const onEnded = () => saveProgress(true);
@@ -327,6 +337,9 @@ export default function VideoPlayer({ fileId, title, version }) {
       {error && (
         <div className="error-overlay" role="alert">
           <p>{error}</p>
+          <button className="btn btn-primary" type="button" onClick={retryPlayback}>
+            Tentar novamente
+          </button>
           <a className="btn btn-primary" href="/">
             Voltar ao catálogo
           </a>

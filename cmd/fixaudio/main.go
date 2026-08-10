@@ -286,10 +286,10 @@ func convertForBrowsers(inPath, outPath string, copyVideo, copyAudio bool) error
 	} else {
 		args = append(args, "-c:a", "aac", "-b:a", "192k")
 	}
-	// Fragmented MP4 keeps the initialization metadata tiny. Large
-	// feature-length files otherwise build multi-megabyte moov atoms that
-	// mobile Safari may abandon before metadata/duration becomes available.
-	args = append(args, "-movflags", "+frag_keyframe+empty_moov+default_base_moof", outPath)
+	// A regular MP4 with moov moved to the front exposes the real total
+	// duration immediately. Do not use empty_moov here: it deliberately
+	// writes duration zero, which leaves mobile Safari stuck at 0:00.
+	args = append(args, "-movflags", "+faststart", outPath)
 	cmd := exec.Command("ffmpeg", args...)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
