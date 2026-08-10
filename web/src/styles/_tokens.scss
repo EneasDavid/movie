@@ -44,4 +44,10 @@ $topbar-height: 72px;
   --accent-hover: #{$accent-hover};
   --success: #{$success};
   --shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --page-gutter: max(16px, var(--safe-left), var(--safe-right));
+  --topbar-space: calc(#{$topbar-height} + var(--safe-top));
 }

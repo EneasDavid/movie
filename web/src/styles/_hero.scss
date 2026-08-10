@@ -9,7 +9,7 @@
   // Cancels out <main>'s padding-top (see _base.scss) so the hero image
   // still reaches all the way to the real top of the viewport and sits
   // behind the topbar's fade-to-transparent gradient, by design.
-  margin-top: -#{t.$topbar-height};
+  margin-top: calc(-1 * var(--topbar-space));
   margin-bottom: 32px;
   opacity: 0;
   animation: fade-in t.$dur-slow t.$ease-out forwards;
@@ -43,7 +43,10 @@
 
   &-content {
     position: relative;
-    padding: 0 clamp(16px, 4vw, 48px) 48px;
+    padding:
+      0 max(clamp(16px, 4vw, 48px), var(--safe-right))
+      max(48px, calc(24px + var(--safe-bottom)))
+      max(clamp(16px, 4vw, 48px), var(--safe-left));
     max-width: 640px;
   }
 

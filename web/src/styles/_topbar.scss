@@ -6,13 +6,17 @@
   left: 0;
   right: 0;
   z-index: 40;
-  min-height: t.$topbar-height;
+  min-height: var(--topbar-space);
   box-sizing: border-box;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: t.$gap;
-  padding: 16px clamp(16px, 4vw, 48px);
+  padding:
+    calc(16px + var(--safe-top))
+    max(clamp(16px, 4vw, 48px), var(--safe-right))
+    16px
+    max(clamp(16px, 4vw, 48px), var(--safe-left));
   // Keep page content from showing through the fixed header. This is
   // especially noticeable on narrow screens, where the profile title sits
   // close to the bar and used to bleed through its transparent gradient.
@@ -24,6 +28,8 @@
     font-weight: 800;
     letter-spacing: 0.02em;
     color: var(--accent);
+    white-space: nowrap;
+    flex-shrink: 0;
   }
 }
 
@@ -32,6 +38,33 @@
 // retain the cinematic fade shown over the featured artwork.
 .catalog-topbar {
   background: linear-gradient(to bottom, rgba(0, 0, 0, 0.78), rgba(0, 0, 0, 0));
+
+  @media (max-width: 560px) {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 10px 12px;
+    align-items: center;
+
+    .brand {
+      font-size: 18px;
+    }
+
+    .search {
+      grid-column: 1 / -1;
+      grid-row: 2;
+      min-width: 0;
+    }
+
+    .search-input {
+      width: 100%;
+      max-width: none;
+    }
+
+    .topbar-user {
+      grid-column: 3;
+      gap: 8px;
+    }
+  }
 }
 
 .topbar-user {
@@ -79,6 +112,12 @@
   &:hover {
     background: rgba(255, 255, 255, 0.1);
     border-color: var(--text);
+  }
+}
+
+@media (max-width: 380px) {
+  .topbar-logout {
+    padding-inline: 9px;
   }
 }
 

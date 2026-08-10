@@ -14,8 +14,11 @@
   // _base.scss. Same overlap bug as the catalog rows had, reintroduced
   // by accident. Restate it explicitly instead of depending on cascade
   // order between two different files.
-  padding: 0 clamp(16px, 4vw, 48px) 64px;
-  padding-top: t.$topbar-height;
+  padding:
+    0 max(clamp(16px, 4vw, 48px), var(--safe-right))
+    max(64px, calc(32px + var(--safe-bottom)))
+    max(clamp(16px, 4vw, 48px), var(--safe-left));
+  padding-top: var(--topbar-space);
 }
 
 .profile-back {

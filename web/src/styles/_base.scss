@@ -32,7 +32,7 @@ img {
 // _hero.scss. Every other state (search results, skeleton, empty/error
 // messages) just gets pushed below the bar like it should.
 main {
-  padding-top: t.$topbar-height;
+  padding-top: var(--topbar-space);
 }
 
 a {

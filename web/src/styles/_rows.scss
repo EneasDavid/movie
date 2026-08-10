@@ -13,7 +13,7 @@
     font-size: clamp(16px, 2vw, 20px);
     font-weight: 700;
     margin: 0 0 10px;
-    padding: 0 clamp(16px, 4vw, 48px);
+    padding-inline: max(clamp(16px, 4vw, 48px), var(--safe-left), var(--safe-right));
   }
 
   &-track-wrap {
@@ -25,7 +25,10 @@
     gap: 8px;
     overflow-x: auto;
     scroll-behavior: smooth;
-    padding: 4px clamp(16px, 4vw, 48px) 12px;
+    padding:
+      4px max(clamp(16px, 4vw, 48px), var(--safe-right))
+      max(12px, var(--safe-bottom))
+      max(clamp(16px, 4vw, 48px), var(--safe-left));
     scrollbar-width: none;
 
     &::-webkit-scrollbar {

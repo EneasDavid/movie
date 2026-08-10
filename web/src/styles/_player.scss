@@ -131,12 +131,19 @@
     display: flex;
     align-items: center;
     gap: 16px;
-    padding: 16px clamp(16px, 4vw, 40px);
+    padding:
+      max(16px, var(--safe-top))
+      max(clamp(16px, 4vw, 40px), var(--safe-right))
+      16px
+      max(clamp(16px, 4vw, 40px), var(--safe-left));
     background: linear-gradient(to bottom, rgba(0, 0, 0, 0.75), transparent);
   }
 
   &-bottom {
-    padding: 0 clamp(16px, 4vw, 40px) 20px;
+    padding:
+      0 max(clamp(16px, 4vw, 40px), var(--safe-right))
+      max(20px, var(--safe-bottom))
+      max(clamp(16px, 4vw, 40px), var(--safe-left));
     background: linear-gradient(to top, rgba(0, 0, 0, 0.85), transparent);
     padding-top: 60px;
   }
