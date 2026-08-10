@@ -232,7 +232,15 @@ func serveFromCache(ctx context.Context, w http.ResponseWriter, a *appctx.App, f
 // response body straight to the client without buffering — used for large
 // or unaligned ranges where chunk caching wouldn't help.
 func servePassThrough(ctx context.Context, w http.ResponseWriter, a *appctx.App, fileID, rangeHeader string, hasRange bool, size int64) {
-	resp, release, err := a.Drive.OpenStream(ctx, fileID, rangeHeader)
+	upstreamRange := rangeHeader
+	if !hasRange {
+		// Google Drive may reject a multi-gigabyte alt=media download with
+		// no Range while happily serving the exact same file as bytes=0-.
+		// Safari commonly starts with a plain GET, so normalize only the
+		// upstream request and still present a regular 200 response to it.
+		upstreamRange = "bytes=0-"
+	}
+	resp, release, err := a.Drive.OpenStream(ctx, fileID, upstreamRange)
 	if err != nil {
 		log.Printf("stream: OpenStream(%s) failed: %v", fileID, err)
 		httpx.WriteJSONError(w, http.StatusBadGateway, "erro ao transmitir vídeo")
@@ -240,8 +248,13 @@ func servePassThrough(ctx context.Context, w http.ResponseWriter, a *appctx.App,
 	}
 	defer release()
 	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusPartialContent {
+		log.Printf("stream: Drive returned status=%d file=%s range=%q", resp.StatusCode, fileID, upstreamRange)
+		httpx.WriteJSONError(w, http.StatusBadGateway, "o armazenamento recusou a transmissão do vídeo")
+		return
+	}
 
-	if cr := resp.Header.Get("Content-Range"); cr != "" {
+	if cr := resp.Header.Get("Content-Range"); hasRange && cr != "" {
 		w.Header().Set("Content-Range", cr)
 	}
 	if cl := resp.Header.Get("Content-Length"); cl != "" {
