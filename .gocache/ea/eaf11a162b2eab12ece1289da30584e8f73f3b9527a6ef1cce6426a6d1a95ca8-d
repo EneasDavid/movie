@@ -1,0 +1,4 @@
+./catalog.go
+./client.go
+./stream.go
+./validate.go

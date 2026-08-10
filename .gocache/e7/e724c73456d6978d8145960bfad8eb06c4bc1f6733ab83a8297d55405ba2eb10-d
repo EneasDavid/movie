@@ -1,0 +1,7 @@
+./auth.go
+./avatar.go
+./catalog.go
+./health.go
+./progress.go
+./stream.go
+./thumbnail.go

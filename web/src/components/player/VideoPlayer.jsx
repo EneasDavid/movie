@@ -200,7 +200,10 @@ export default function VideoPlayer({ fileId, title, version }) {
     // the new media request and native fullscreen playback.
     video.src = retrySrc;
     video.load();
-    video.play().catch(() => setError("Não foi possível iniciar o vídeo. Verifique a conexão e tente novamente."));
+    video.play().catch((err) => {
+      const detail = err?.name ? ` (${err.name})` : "";
+      setError(`Não foi possível iniciar o vídeo${detail}. Tente novamente.`);
+    });
     requestLandscape();
   }, [fileId, requestLandscape, version]);
 

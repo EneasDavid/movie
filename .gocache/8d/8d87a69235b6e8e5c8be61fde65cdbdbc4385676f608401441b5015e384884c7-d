@@ -1,0 +1,11 @@
+./avatars.go
+./cache.go
+./encoding.go
+./loginattempts.go
+./progress.go
+./ratelimit.go
+./redis.go
+./semaphore.go
+./sessions.go
+./users.go
+./verification.go

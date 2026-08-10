@@ -50,10 +50,13 @@ func Stream(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(r.Context(), 25*time.Second)
-	defer cancel()
-
-	meta, err := getMeta(ctx, a, fileID)
+	// Bound only the small metadata lookup. The previous 25-second context
+	// was reused for the response body too, so Safari's initial full-file
+	// GET was forcibly cut off after 25 seconds even while bytes were still
+	// flowing. A movie stream must live until the client disconnects.
+	metaCtx, cancelMeta := context.WithTimeout(r.Context(), 10*time.Second)
+	meta, err := getMeta(metaCtx, a, fileID)
+	cancelMeta()
 	if err != nil {
 		log.Printf("stream: getMeta(%s) failed: %v", fileID, err)
 		httpx.WriteJSONError(w, http.StatusBadGateway, "não foi possível obter informações do vídeo")
@@ -73,6 +76,7 @@ func Stream(w http.ResponseWriter, r *http.Request) {
 	if !hasRange {
 		start, end = 0, meta.Size-1
 	}
+	ctx := r.Context()
 
 	w.Header().Set("Accept-Ranges", "bytes")
 	w.Header().Set("Content-Type", meta.MimeType)
