@@ -2,6 +2,7 @@ package drive
 
 import (
 	"context"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -34,15 +35,16 @@ func (c *Client) BuildCatalog(ctx context.Context, rootFolderID string) (*Catalo
 	}
 
 	var folders []File
-	var rootVideos []File
+	var rootFiles []File
 	for _, f := range children {
 		switch {
 		case f.IsFolder:
 			folders = append(folders, f)
-		case isVideo(f.MimeType):
-			rootVideos = append(rootVideos, f)
+		default:
+			rootFiles = append(rootFiles, f)
 		}
 	}
+	rootVideos := videosWithFolderCovers(rootFiles)
 
 	categories := make([]Category, 0, len(folders)+1)
 	if len(rootVideos) > 0 {
@@ -65,12 +67,7 @@ func (c *Client) BuildCatalog(ctx context.Context, rootFolderID string) (*Catalo
 				// the whole catalog — skip it, keep the rest.
 				return
 			}
-			videos := make([]File, 0, len(items))
-			for _, it := range items {
-				if !it.IsFolder && isVideo(it.MimeType) {
-					videos = append(videos, it)
-				}
-			}
+			videos := videosWithFolderCovers(items)
 			if len(videos) > 0 {
 				results[i] = result{cat: Category{ID: folder.ID, Title: folder.Name, Items: videos}, ok: true}
 			}
@@ -89,4 +86,43 @@ func (c *Client) BuildCatalog(ctx context.Context, rootFolderID string) (*Catalo
 
 func isVideo(mimeType string) bool {
 	return strings.HasPrefix(mimeType, "video/")
+}
+
+func isImage(mimeType string) bool {
+	return strings.HasPrefix(mimeType, "image/")
+}
+
+// videosWithFolderCovers treats image files beside videos as explicit
+// artwork. A single image covers every video in that folder; with several
+// images, matching basenames ("Movie.mp4" + "Movie.jpg") win. This keeps
+// cover management entirely in Drive without adding an admin UI.
+func videosWithFolderCovers(files []File) []File {
+	videos := make([]File, 0, len(files))
+	images := make([]File, 0, len(files))
+	for _, f := range files {
+		switch {
+		case !f.IsFolder && isVideo(f.MimeType):
+			videos = append(videos, f)
+		case !f.IsFolder && isImage(f.MimeType) && f.ThumbnailURL != "":
+			images = append(images, f)
+		}
+	}
+
+	byBase := make(map[string]string, len(images))
+	for _, image := range images {
+		byBase[mediaBaseName(image.Name)] = image.ThumbnailURL
+	}
+	for i := range videos {
+		if cover := byBase[mediaBaseName(videos[i].Name)]; cover != "" {
+			videos[i].ThumbnailURL = cover
+		} else if len(images) == 1 {
+			videos[i].ThumbnailURL = images[0].ThumbnailURL
+		}
+	}
+	return videos
+}
+
+func mediaBaseName(name string) string {
+	ext := filepath.Ext(name)
+	return strings.ToLower(strings.TrimSpace(strings.TrimSuffix(name, ext)))
 }

@@ -55,6 +55,7 @@ func main() {
 	credentials := flag.String("credentials", "", "path to the service account JSON key file (required)")
 	folderID := flag.String("folder", os.Getenv("GOOGLE_DRIVE_FOLDER_ID"), "root Drive folder ID (defaults to $GOOGLE_DRIVE_FOLDER_ID)")
 	dryRun := flag.Bool("dry-run", false, "list what would be fixed without downloading/uploading anything")
+	forceRemux := flag.Bool("force-remux", false, "rewrite compatible MP4 files as streaming-friendly fragmented MP4")
 	flag.Parse()
 
 	if *credentials == "" {
@@ -92,7 +93,7 @@ func main() {
 	for i, v := range videos {
 		log.Printf("[%d/%d] %s (%s)", i+1, len(videos), v.Name, v.Id)
 
-		if err := processOne(ctx, srv, v, tmpDir, *dryRun); err != nil {
+		if err := processOne(ctx, srv, v, tmpDir, *dryRun, *forceRemux); err != nil {
 			if err == errSkip {
 				skipped++
 				continue
@@ -166,7 +167,7 @@ func listChildren(srv *drive.Service, folderID string) ([]*drive.File, error) {
 // processOne downloads one file, checks its audio codec, remuxes it if
 // needed, and uploads the result back onto the same file ID. Returns
 // errSkip (not a real error) when the file is already fine.
-func processOne(ctx context.Context, srv *drive.Service, f *drive.File, tmpDir string, dryRun bool) error {
+func processOne(ctx context.Context, srv *drive.Service, f *drive.File, tmpDir string, dryRun, forceRemux bool) error {
 	inPath := filepath.Join(tmpDir, f.Id+"-in"+filepath.Ext(f.Name))
 
 	if err := downloadFile(ctx, srv, f.Id, inPath); err != nil {
@@ -180,22 +181,22 @@ func processOne(ctx context.Context, srv *drive.Service, f *drive.File, tmpDir s
 	}
 
 	ext := strings.ToLower(filepath.Ext(f.Name))
-	videoCompatible := codecs.Video == "h264"
+	videoCompatible := codecs.Video == "h264" && (codecs.PixelFormat == "yuv420p" || codecs.PixelFormat == "yuvj420p")
 	audioCompatible := codecs.Audio == "aac" || codecs.Audio == "mp3"
 	containerCompatible := ext == ".mp4" || ext == ".m4v"
-	if videoCompatible && audioCompatible && containerCompatible {
-		log.Printf("  skip: already video=%s audio=%s in %s", codecs.Video, codecs.Audio, ext)
+	if videoCompatible && audioCompatible && containerCompatible && !forceRemux {
+		log.Printf("  skip: already video=%s profile=%s pix_fmt=%s level=%d audio=%s in %s", codecs.Video, codecs.VideoProfile, codecs.PixelFormat, codecs.VideoLevel, codecs.Audio, ext)
 		return errSkip
 	}
 
-	log.Printf("  video=%s audio=%s container=%s -> converting to h264/aac/mp4", codecs.Video, codecs.Audio, ext)
+	log.Printf("  video=%s profile=%s pix_fmt=%s level=%d audio=%s container=%s -> writing streaming-friendly h264/yuv420p/aac/mp4", codecs.Video, codecs.VideoProfile, codecs.PixelFormat, codecs.VideoLevel, codecs.Audio, ext)
 	if dryRun {
 		log.Printf("  (dry-run, not uploading)")
 		return errSkip
 	}
 
 	outPath := filepath.Join(tmpDir, f.Id+"-out.mp4")
-	if err := convertForBrowsers(inPath, outPath, videoCompatible); err != nil {
+	if err := convertForBrowsers(inPath, outPath, videoCompatible, audioCompatible); err != nil {
 		return fmt.Errorf("ffmpeg: %w", err)
 	}
 	defer os.Remove(outPath)
@@ -227,19 +228,25 @@ func downloadFile(ctx context.Context, srv *drive.Service, fileID, destPath stri
 }
 
 type mediaCodecs struct {
-	Video string
-	Audio string
+	Video        string
+	Audio        string
+	VideoProfile string
+	PixelFormat  string
+	VideoLevel   int
 }
 
 func probeCodecs(path string) (mediaCodecs, error) {
-	out, err := exec.Command("ffprobe", "-v", "error", "-show_entries", "stream=codec_type,codec_name", "-of", "json", path).Output()
+	out, err := exec.Command("ffprobe", "-v", "error", "-show_entries", "stream=codec_type,codec_name,profile,pix_fmt,level", "-of", "json", path).Output()
 	if err != nil {
 		return mediaCodecs{}, err
 	}
 	var probe struct {
 		Streams []struct {
-			CodecType string `json:"codec_type"`
-			CodecName string `json:"codec_name"`
+			CodecType   string `json:"codec_type"`
+			CodecName   string `json:"codec_name"`
+			Profile     string `json:"profile"`
+			PixelFormat string `json:"pix_fmt"`
+			Level       int    `json:"level"`
 		} `json:"streams"`
 	}
 	if err := json.Unmarshal(out, &probe); err != nil {
@@ -251,6 +258,9 @@ func probeCodecs(path string) (mediaCodecs, error) {
 		case "video":
 			if codecs.Video == "" {
 				codecs.Video = stream.CodecName
+				codecs.VideoProfile = stream.Profile
+				codecs.PixelFormat = stream.PixelFormat
+				codecs.VideoLevel = stream.Level
 			}
 		case "audio":
 			if codecs.Audio == "" {
@@ -264,14 +274,22 @@ func probeCodecs(path string) (mediaCodecs, error) {
 	return codecs, nil
 }
 
-func convertForBrowsers(inPath, outPath string, copyVideo bool) error {
+func convertForBrowsers(inPath, outPath string, copyVideo, copyAudio bool) error {
 	args := []string{"-y", "-v", "error", "-i", inPath, "-map", "0:v:0", "-map", "0:a:0"}
 	if copyVideo {
 		args = append(args, "-c:v", "copy")
 	} else {
 		args = append(args, "-c:v", "libx264", "-preset", "medium", "-crf", "20", "-pix_fmt", "yuv420p")
 	}
-	args = append(args, "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", outPath)
+	if copyAudio {
+		args = append(args, "-c:a", "copy")
+	} else {
+		args = append(args, "-c:a", "aac", "-b:a", "192k")
+	}
+	// Fragmented MP4 keeps the initialization metadata tiny. Large
+	// feature-length files otherwise build multi-megabyte moov atoms that
+	// mobile Safari may abandon before metadata/duration becomes available.
+	args = append(args, "-movflags", "+frag_keyframe+empty_moov+default_base_moof", outPath)
 	cmd := exec.Command("ffmpeg", args...)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
