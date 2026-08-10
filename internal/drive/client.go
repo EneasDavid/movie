@@ -38,13 +38,14 @@ func NewClient(apiKey string, maxInFlight int) *Client {
 
 // rawFile mirrors the subset of the Drive `File` resource we care about.
 type rawFile struct {
-	ID                 string `json:"id"`
-	Name               string `json:"name"`
-	MimeType           string `json:"mimeType"`
-	ThumbnailLink      string `json:"thumbnailLink"`
-	Size               string `json:"size"`
-	CreatedTime        string `json:"createdTime"`
-	ModifiedTime       string `json:"modifiedTime"`
+	ID                 string            `json:"id"`
+	Name               string            `json:"name"`
+	MimeType           string            `json:"mimeType"`
+	ThumbnailLink      string            `json:"thumbnailLink"`
+	Size               string            `json:"size"`
+	CreatedTime        string            `json:"createdTime"`
+	ModifiedTime       string            `json:"modifiedTime"`
+	AppProperties      map[string]string `json:"appProperties"`
 	VideoMediaMetadata *struct {
 		DurationMillis string `json:"durationMillis"`
 		Width          int    `json:"width"`
@@ -84,7 +85,7 @@ func (c *Client) listChildren(ctx context.Context, folderID string) ([]File, err
 	for {
 		q := url.Values{}
 		q.Set("q", fmt.Sprintf("'%s' in parents and trashed = false", folderID))
-		q.Set("fields", "nextPageToken,files(id,name,mimeType,thumbnailLink,size,createdTime,modifiedTime,videoMediaMetadata(durationMillis,width,height))")
+		q.Set("fields", "nextPageToken,files(id,name,mimeType,thumbnailLink,size,createdTime,modifiedTime,appProperties,videoMediaMetadata(durationMillis,width,height))")
 		q.Set("pageSize", "1000")
 		q.Set("key", c.apiKey)
 		q.Set("orderBy", "folder,name_natural")
@@ -136,6 +137,11 @@ func toFile(rf rawFile) File {
 	}
 	if rf.VideoMediaMetadata != nil && rf.VideoMediaMetadata.DurationMillis != "" {
 		if n, err := strconv.ParseInt(rf.VideoMediaMetadata.DurationMillis, 10, 64); err == nil {
+			f.DurationMs = n
+		}
+	}
+	if f.DurationMs == 0 && rf.AppProperties["durationMs"] != "" {
+		if n, err := strconv.ParseInt(rf.AppProperties["durationMs"], 10, 64); err == nil {
 			f.DurationMs = n
 		}
 	}
@@ -203,7 +209,7 @@ func truncate(s string, n int) string {
 // to get its size/mimeType before serving range requests).
 func (c *Client) FileMeta(ctx context.Context, fileID string) (*File, string, error) {
 	q := url.Values{}
-	q.Set("fields", "id,name,mimeType,thumbnailLink,size,createdTime,videoMediaMetadata(durationMillis,width,height)")
+	q.Set("fields", "id,name,mimeType,thumbnailLink,size,createdTime,appProperties,videoMediaMetadata(durationMillis,width,height)")
 	q.Set("key", c.apiKey)
 	reqURL := apiBase + "/" + url.PathEscape(fileID) + "?" + q.Encode()
 

@@ -17,3 +17,10 @@ func TestIsVideoFileAcceptsMOVByMimeOrExtension(t *testing.T) {
 		}
 	}
 }
+
+func TestToFileUsesDurationAppPropertyFallback(t *testing.T) {
+	f := toFile(rawFile{AppProperties: map[string]string{"durationMs": "7521355"}})
+	if f.DurationMs != 7521355 {
+		t.Fatalf("DurationMs = %d, want 7521355", f.DurationMs)
+	}
+}
