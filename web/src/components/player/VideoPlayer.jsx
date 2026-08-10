@@ -9,7 +9,7 @@ import CenterFeedback from "./CenterFeedback";
 const SEEK_SECONDS = 15;
 const PROGRESS_SAVE_INTERVAL_MS = 5000;
 
-export default function VideoPlayer({ fileId, title, version }) {
+export default function VideoPlayer({ fileId, title, version, mimeType }) {
   const videoRef = useRef(null);
   const playerRef = useRef(null);
   const lastSaveRef = useRef(0);
@@ -327,12 +327,13 @@ export default function VideoPlayer({ fileId, title, version }) {
       <video
         ref={videoRef}
         className="video"
-        src={src}
         controls={useNativeControls}
         preload="metadata"
         autoPlay={!useNativeControls}
         onClick={useNativeControls ? undefined : togglePlay}
-      />
+      >
+        <source src={src} type={mimeType || undefined} />
+      </video>
 
       {isBuffering && !error && (
         <div className="center-spinner" aria-hidden="true">

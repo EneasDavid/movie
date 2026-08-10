@@ -46,11 +46,20 @@ export function streamURL(fileId, version = "") {
   return `/api/stream?${params.toString()}`;
 }
 
+function browserVideoMime(item) {
+  const extension = (item.name || "").split(".").pop()?.toLowerCase();
+  if (extension === "mov") return "video/quicktime";
+  if (extension === "mp4" || extension === "m4v") return "video/mp4";
+  if (extension === "webm") return "video/webm";
+  return item.mimeType?.startsWith("video/") ? item.mimeType : "";
+}
+
 export function watchPath(item) {
   const params = new URLSearchParams({
     id: item.id,
     title: item.name || "",
     v: item.modifiedTime || "",
+		type: browserVideoMime(item),
   });
   return `/watch?${params.toString()}`;
 }

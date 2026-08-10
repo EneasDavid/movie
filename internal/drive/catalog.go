@@ -84,8 +84,16 @@ func (c *Client) BuildCatalog(ctx context.Context, rootFolderID string) (*Catalo
 	return &Catalog{Categories: categories, GeneratedAt: time.Now()}, nil
 }
 
-func isVideo(mimeType string) bool {
-	return strings.HasPrefix(mimeType, "video/")
+func isVideoFile(f File) bool {
+	if strings.HasPrefix(f.MimeType, "video/") {
+		return true
+	}
+	switch strings.ToLower(filepath.Ext(f.Name)) {
+	case ".mp4", ".m4v", ".mov", ".mkv", ".webm", ".avi":
+		return true
+	default:
+		return false
+	}
 }
 
 func isImage(mimeType string) bool {
@@ -101,7 +109,7 @@ func videosWithFolderCovers(files []File) []File {
 	images := make([]File, 0, len(files))
 	for _, f := range files {
 		switch {
-		case !f.IsFolder && isVideo(f.MimeType):
+		case !f.IsFolder && isVideoFile(f):
 			videos = append(videos, f)
 		case !f.IsFolder && isImage(f.MimeType) && f.ThumbnailURL != "":
 			images = append(images, f)

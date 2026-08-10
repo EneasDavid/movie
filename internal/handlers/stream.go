@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -30,7 +31,23 @@ const metaTTL = 30 * time.Minute
 
 type fileMeta struct {
 	MimeType string `json:"mimeType"`
+	Name     string `json:"name"`
 	Size     int64  `json:"size"`
+}
+
+func browserVideoMime(name, driveMime string) string {
+	switch strings.ToLower(filepath.Ext(name)) {
+	case ".mov":
+		return "video/quicktime"
+	case ".mp4", ".m4v":
+		return "video/mp4"
+	case ".webm":
+		return "video/webm"
+	}
+	if strings.HasPrefix(driveMime, "video/") {
+		return driveMime
+	}
+	return ""
 }
 
 // Stream serves GET/HEAD /api/stream?id=<fileID>, proxying video bytes
@@ -63,7 +80,8 @@ func Stream(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteJSONError(w, http.StatusBadGateway, "não foi possível obter informações do vídeo")
 		return
 	}
-	if meta.Size <= 0 || !strings.HasPrefix(meta.MimeType, "video/") {
+	contentType := browserVideoMime(meta.Name, meta.MimeType)
+	if meta.Size <= 0 || contentType == "" {
 		httpx.WriteJSONError(w, http.StatusNotFound, "arquivo de vídeo não encontrado ou não compartilhado publicamente")
 		return
 	}
@@ -80,7 +98,7 @@ func Stream(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	w.Header().Set("Accept-Ranges", "bytes")
-	w.Header().Set("Content-Type", meta.MimeType)
+	w.Header().Set("Content-Type", contentType)
 	// The Drive file may be replaced in-place while retaining its ID. Do
 	// not let Safari reuse bytes from the old container under the same URL;
 	// the catalog also appends modifiedTime as a cache-busting query value.
@@ -119,7 +137,7 @@ func getMeta(ctx context.Context, a *appctx.App, fileID string) (fileMeta, error
 	if err != nil {
 		return fileMeta{}, err
 	}
-	m = fileMeta{MimeType: mimeType, Size: f.SizeBytes}
+	m = fileMeta{MimeType: mimeType, Name: f.Name, Size: f.SizeBytes}
 	_ = a.Redis.SetMeta(ctx, fileID, m, metaTTL)
 	return m, nil
 }
