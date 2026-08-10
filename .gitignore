@@ -1,6 +1,7 @@
 # Go
 /bin/
 *.test
+.gocache/
 
 # Node / Vite (web/node_modules is reinstalled from package-lock.json;
 # internal/web/static IS committed on purpose — see README — it's the

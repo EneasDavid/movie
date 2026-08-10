@@ -24,6 +24,7 @@ import (
 // would just mean looping fetch-then-cache over dozens of chunks for
 // nothing, so it goes straight through.
 const maxCacheableRangeBytes = 8 * 1024 * 1024 // 8MB
+const fullStreamUpstreamChunkBytes = 16 * 1024 * 1024
 
 const metaTTL = 30 * time.Minute
 
@@ -94,6 +95,10 @@ func Stream(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Length", strconv.FormatInt(meta.Size, 10))
 			w.WriteHeader(http.StatusOK)
 		}
+		return
+	}
+	if !hasRange {
+		serveWholeFromRanges(ctx, w, a, fileID, meta.Size)
 		return
 	}
 
@@ -233,13 +238,6 @@ func serveFromCache(ctx context.Context, w http.ResponseWriter, a *appctx.App, f
 // or unaligned ranges where chunk caching wouldn't help.
 func servePassThrough(ctx context.Context, w http.ResponseWriter, a *appctx.App, fileID, rangeHeader string, hasRange bool, size int64) {
 	upstreamRange := rangeHeader
-	if !hasRange {
-		// Google Drive may reject a multi-gigabyte alt=media download with
-		// no Range while happily serving the exact same file as bytes=0-.
-		// Safari commonly starts with a plain GET, so normalize only the
-		// upstream request and still present a regular 200 response to it.
-		upstreamRange = "bytes=0-"
-	}
 	resp, release, err := a.Drive.OpenStream(ctx, fileID, upstreamRange)
 	if err != nil {
 		log.Printf("stream: OpenStream(%s) failed: %v", fileID, err)
@@ -267,4 +265,38 @@ func servePassThrough(ctx context.Context, w http.ResponseWriter, a *appctx.App,
 	}
 	w.WriteHeader(status)
 	_, _ = io.Copy(w, resp.Body)
+}
+
+// serveWholeFromRanges handles clients (notably iOS Safari) that begin
+// with a plain GET. Google Drive rejects a single unbounded download for
+// this multi-gigabyte file, so expose one normal 200 response to the
+// browser while fetching finite, sequential ranges upstream.
+func serveWholeFromRanges(ctx context.Context, w http.ResponseWriter, a *appctx.App, fileID string, size int64) {
+	w.Header().Set("Content-Length", strconv.FormatInt(size, 10))
+	w.WriteHeader(http.StatusOK)
+
+	for start := int64(0); start < size; start += fullStreamUpstreamChunkBytes {
+		end := start + fullStreamUpstreamChunkBytes - 1
+		if end >= size {
+			end = size - 1
+		}
+		rangeHeader := fmt.Sprintf("bytes=%d-%d", start, end)
+		resp, release, err := a.Drive.OpenStream(ctx, fileID, rangeHeader)
+		if err != nil {
+			log.Printf("stream: sequential OpenStream(%s, %s) failed: %v", fileID, rangeHeader, err)
+			return
+		}
+		if resp.StatusCode != http.StatusPartialContent && resp.StatusCode != http.StatusOK {
+			log.Printf("stream: sequential Drive status=%d file=%s range=%s", resp.StatusCode, fileID, rangeHeader)
+			resp.Body.Close()
+			release()
+			return
+		}
+		_, copyErr := io.Copy(w, resp.Body)
+		resp.Body.Close()
+		release()
+		if copyErr != nil {
+			return
+		}
+	}
 }
