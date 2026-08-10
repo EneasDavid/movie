@@ -9,6 +9,7 @@ export default function Watch() {
   const title = formatTitle(params.get("title") || "");
   const version = params.get("v") || "";
 	const mimeType = params.get("type") || "";
+	const durationMs = Number(params.get("duration")) || 0;
 
   useEffect(() => {
     document.body.classList.add("player-body");
@@ -28,5 +29,5 @@ export default function Watch() {
     );
   }
 
-  return <VideoPlayer fileId={fileId} title={title} version={version} mimeType={mimeType} />;
+  return <VideoPlayer fileId={fileId} title={title} version={version} mimeType={mimeType} initialDuration={durationMs / 1000} />;
 }

@@ -59,7 +59,8 @@ export function watchPath(item) {
     id: item.id,
     title: item.name || "",
     v: item.modifiedTime || "",
-		type: browserVideoMime(item),
+    type: browserVideoMime(item),
+    duration: item.durationMs ? String(item.durationMs) : "",
   });
   return `/watch?${params.toString()}`;
 }

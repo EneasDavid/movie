@@ -9,7 +9,7 @@ import CenterFeedback from "./CenterFeedback";
 const SEEK_SECONDS = 15;
 const PROGRESS_SAVE_INTERVAL_MS = 5000;
 
-export default function VideoPlayer({ fileId, title, version, mimeType }) {
+export default function VideoPlayer({ fileId, title, version, mimeType, initialDuration = 0 }) {
   const videoRef = useRef(null);
   const playerRef = useRef(null);
   const lastSaveRef = useRef(0);
@@ -23,7 +23,11 @@ export default function VideoPlayer({ fileId, title, version, mimeType }) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isBuffering, setIsBuffering] = useState(true);
   const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
+  // Drive already exposes the duration in the catalog. Starting with it
+  // makes the timeline/time label useful before the browser downloads the
+  // MOV/MP4 metadata; loadedmetadata replaces it with the authoritative
+  // value from the media file.
+  const [duration, setDuration] = useState(initialDuration);
   const [buffered, setBuffered] = useState(0);
   const [volume, setVolume] = useState(1);
   const [muted, setMuted] = useState(false);
