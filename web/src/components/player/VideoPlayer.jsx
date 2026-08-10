@@ -15,6 +15,10 @@ export default function VideoPlayer({ fileId, title, version }) {
   const lastSaveRef = useRef(0);
   const resumedRef = useRef(false);
   const initialProgressRef = useRef(null);
+  const useNativeControls = useMemo(
+    () => typeof window !== "undefined" && window.matchMedia("(max-width: 900px)").matches,
+    []
+  );
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [isBuffering, setIsBuffering] = useState(true);
@@ -324,9 +328,10 @@ export default function VideoPlayer({ fileId, title, version }) {
         ref={videoRef}
         className="video"
         src={src}
+        controls={useNativeControls}
         preload="metadata"
-        autoPlay
-        onClick={togglePlay}
+        autoPlay={!useNativeControls}
+        onClick={useNativeControls ? undefined : togglePlay}
       />
 
       {isBuffering && !error && (
@@ -349,7 +354,7 @@ export default function VideoPlayer({ fileId, title, version }) {
         </div>
       )}
 
-      {!error && (
+      {!error && !useNativeControls && (
         <Controls
           idle={idle}
           title={title}
