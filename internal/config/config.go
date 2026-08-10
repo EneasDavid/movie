@@ -15,6 +15,9 @@ type Config struct {
 	// Google Drive
 	DriveAPIKey   string
 	DriveFolderID string
+	// Optional local media source for development/testing when Drive is
+	// temporarily rate-limited. Never configured in production.
+	LocalMediaFile string
 
 	// Upstash Redis (REST API — works over plain HTTPS, no persistent TCP
 	// connection needed, which is what makes it viable from stateless
@@ -56,9 +59,10 @@ type Config struct {
 
 func Load() Config {
 	return Config{
-		Port:          getEnv("PORT", "8080"),
-		DriveAPIKey:   getEnv("GOOGLE_DRIVE_API_KEY", ""),
-		DriveFolderID: getEnv("GOOGLE_DRIVE_FOLDER_ID", ""),
+		Port:           getEnv("PORT", "8080"),
+		DriveAPIKey:    getEnv("GOOGLE_DRIVE_API_KEY", ""),
+		DriveFolderID:  getEnv("GOOGLE_DRIVE_FOLDER_ID", ""),
+		LocalMediaFile: getEnv("LOCAL_MEDIA_FILE", ""),
 
 		RedisURL:   firstNonEmpty(getEnv("UPSTASH_REDIS_REST_URL", ""), getEnv("KV_REST_API_URL", "")),
 		RedisToken: firstNonEmpty(getEnv("UPSTASH_REDIS_REST_TOKEN", ""), getEnv("KV_REST_API_TOKEN", "")),

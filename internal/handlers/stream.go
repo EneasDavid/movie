@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -67,6 +68,11 @@ func Stream(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteJSONError(w, http.StatusBadRequest, "id inválido")
 		return
 	}
+	if a.Config.LocalMediaFile != "" {
+		if serveLocalMedia(w, r, a.Config.LocalMediaFile) {
+			return
+		}
+	}
 
 	// Bound only the small metadata lookup. The previous 25-second context
 	// was reused for the response body too, so Safari's initial full-file
@@ -125,7 +131,29 @@ func Stream(w http.ResponseWriter, r *http.Request) {
 		serveFromCache(ctx, w, a, fileID, start, end, meta.Size)
 		return
 	}
-	servePassThrough(ctx, w, a, fileID, r.Header.Get("Range"), hasRange, meta.Size)
+	// Safari commonly asks for bytes=0-<entire multi-GB file>. Drive
+	// rejects that enormous single upstream range with 403 even though the
+	// same file is public and small ranges work. Keep one standards-compliant
+	// 206 response toward the browser while fetching bounded ranges from
+	// Drive sequentially.
+	serveRangeFromRanges(ctx, w, a, fileID, start, end, meta.Size)
+}
+
+func serveLocalMedia(w http.ResponseWriter, r *http.Request, filename string) bool {
+	f, err := os.Open(filename)
+	if err != nil {
+		log.Printf("stream: local media unavailable: %v", err)
+		return false
+	}
+	defer f.Close()
+	info, err := f.Stat()
+	if err != nil || !info.Mode().IsRegular() {
+		return false
+	}
+	w.Header().Set("Content-Type", browserVideoMime(filename, ""))
+	w.Header().Set("Cache-Control", "private, no-cache")
+	http.ServeContent(w, r, info.Name(), info.ModTime(), f)
+	return true
 }
 
 func getMeta(ctx context.Context, a *appctx.App, fileID string) (fileMeta, error) {
@@ -292,20 +320,32 @@ func servePassThrough(ctx context.Context, w http.ResponseWriter, a *appctx.App,
 func serveWholeFromRanges(ctx context.Context, w http.ResponseWriter, a *appctx.App, fileID string, size int64) {
 	w.Header().Set("Content-Length", strconv.FormatInt(size, 10))
 	w.WriteHeader(http.StatusOK)
+	copyDriveRanges(ctx, w, a, fileID, 0, size-1)
+}
 
-	for start := int64(0); start < size; start += fullStreamUpstreamChunkBytes {
-		end := start + fullStreamUpstreamChunkBytes - 1
-		if end >= size {
-			end = size - 1
+func serveRangeFromRanges(ctx context.Context, w http.ResponseWriter, a *appctx.App, fileID string, start, end, size int64) {
+	w.Header().Set("Content-Range", fmt.Sprintf("bytes %d-%d/%d", start, end, size))
+	w.Header().Set("Content-Length", strconv.FormatInt(end-start+1, 10))
+	w.WriteHeader(http.StatusPartialContent)
+	copyDriveRanges(ctx, w, a, fileID, start, end)
+}
+
+func copyDriveRanges(ctx context.Context, w http.ResponseWriter, a *appctx.App, fileID string, start, end int64) {
+	flusher, canFlush := w.(http.Flusher)
+	for chunkStart := start; chunkStart <= end; chunkStart += fullStreamUpstreamChunkBytes {
+		chunkEnd := chunkStart + fullStreamUpstreamChunkBytes - 1
+		if chunkEnd > end {
+			chunkEnd = end
 		}
-		rangeHeader := fmt.Sprintf("bytes=%d-%d", start, end)
+		rangeHeader := fmt.Sprintf("bytes=%d-%d", chunkStart, chunkEnd)
 		resp, release, err := a.Drive.OpenStream(ctx, fileID, rangeHeader)
 		if err != nil {
 			log.Printf("stream: sequential OpenStream(%s, %s) failed: %v", fileID, rangeHeader, err)
 			return
 		}
 		if resp.StatusCode != http.StatusPartialContent && resp.StatusCode != http.StatusOK {
-			log.Printf("stream: sequential Drive status=%d file=%s range=%s", resp.StatusCode, fileID, rangeHeader)
+			body, _ := io.ReadAll(io.LimitReader(resp.Body, 500))
+			log.Printf("stream: sequential Drive status=%d file=%s range=%s body=%q", resp.StatusCode, fileID, rangeHeader, string(body))
 			resp.Body.Close()
 			release()
 			return
@@ -315,6 +355,9 @@ func serveWholeFromRanges(ctx context.Context, w http.ResponseWriter, a *appctx.
 		release()
 		if copyErr != nil {
 			return
+		}
+		if canFlush {
+			flusher.Flush()
 		}
 	}
 }
