@@ -76,7 +76,10 @@ func Stream(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Accept-Ranges", "bytes")
 	w.Header().Set("Content-Type", meta.MimeType)
-	w.Header().Set("Cache-Control", "private, max-age=3600")
+	// The Drive file may be replaced in-place while retaining its ID. Do
+	// not let Safari reuse bytes from the old container under the same URL;
+	// the catalog also appends modifiedTime as a cache-busting query value.
+	w.Header().Set("Cache-Control", "private, no-cache")
 
 	if r.Method == http.MethodHead {
 		if hasRange {

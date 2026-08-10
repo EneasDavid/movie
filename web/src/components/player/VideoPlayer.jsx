@@ -9,7 +9,7 @@ import CenterFeedback from "./CenterFeedback";
 const SEEK_SECONDS = 15;
 const PROGRESS_SAVE_INTERVAL_MS = 5000;
 
-export default function VideoPlayer({ fileId, title }) {
+export default function VideoPlayer({ fileId, title, version }) {
   const videoRef = useRef(null);
   const playerRef = useRef(null);
   const lastSaveRef = useRef(0);
@@ -29,7 +29,7 @@ export default function VideoPlayer({ fileId, title }) {
 
   const { idle, resetIdle } = useIdleControls(isPlaying);
   const { requestLandscape } = useMobileLandscape(playerRef, videoRef);
-  const src = useMemo(() => streamURL(fileId), [fileId]);
+  const src = useMemo(() => streamURL(fileId, version), [fileId, version]);
 
   const flashFeedback = useCallback((type) => {
     setFeedback({ type, key: Date.now() });
@@ -311,7 +311,6 @@ export default function VideoPlayer({ fileId, title }) {
         ref={videoRef}
         className="video"
         src={src}
-        playsInline
         preload="metadata"
         autoPlay
         onClick={togglePlay}

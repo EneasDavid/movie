@@ -44,6 +44,7 @@ type rawFile struct {
 	ThumbnailLink      string `json:"thumbnailLink"`
 	Size               string `json:"size"`
 	CreatedTime        string `json:"createdTime"`
+	ModifiedTime       string `json:"modifiedTime"`
 	VideoMediaMetadata *struct {
 		DurationMillis string `json:"durationMillis"`
 		Width          int    `json:"width"`
@@ -66,6 +67,7 @@ type File struct {
 	SizeBytes    int64  `json:"sizeBytes,omitempty"`
 	DurationMs   int64  `json:"durationMs,omitempty"`
 	CreatedTime  string `json:"createdTime,omitempty"`
+	ModifiedTime string `json:"modifiedTime,omitempty"`
 }
 
 var apiErrStatus = map[int]string{
@@ -82,7 +84,7 @@ func (c *Client) listChildren(ctx context.Context, folderID string) ([]File, err
 	for {
 		q := url.Values{}
 		q.Set("q", fmt.Sprintf("'%s' in parents and trashed = false", folderID))
-		q.Set("fields", "nextPageToken,files(id,name,mimeType,thumbnailLink,size,createdTime,videoMediaMetadata(durationMillis,width,height))")
+		q.Set("fields", "nextPageToken,files(id,name,mimeType,thumbnailLink,size,createdTime,modifiedTime,videoMediaMetadata(durationMillis,width,height))")
 		q.Set("pageSize", "1000")
 		q.Set("key", c.apiKey)
 		q.Set("orderBy", "folder,name_natural")
@@ -117,11 +119,12 @@ func (c *Client) listChildren(ctx context.Context, folderID string) ([]File, err
 
 func toFile(rf rawFile) File {
 	f := File{
-		ID:          rf.ID,
-		Name:        rf.Name,
-		MimeType:    rf.MimeType,
-		IsFolder:    rf.MimeType == "application/vnd.google-apps.folder",
-		CreatedTime: rf.CreatedTime,
+		ID:           rf.ID,
+		Name:         rf.Name,
+		MimeType:     rf.MimeType,
+		IsFolder:     rf.MimeType == "application/vnd.google-apps.folder",
+		CreatedTime:  rf.CreatedTime,
+		ModifiedTime: rf.ModifiedTime,
 	}
 	if rf.ThumbnailLink != "" {
 		f.ThumbnailURL = "/api/thumbnail?id=" + url.QueryEscape(rf.ID)

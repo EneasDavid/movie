@@ -8,6 +8,7 @@ package main
 import (
 	"io/fs"
 	"log"
+	"mime"
 	"net/http"
 	"os"
 	"path"
@@ -25,6 +26,7 @@ import (
 const indexFile = "index.html"
 
 func main() {
+	_ = mime.AddExtensionType(".webmanifest", "application/manifest+json")
 	config.LoadDotEnv(".env")
 	a := appctx.Get()
 

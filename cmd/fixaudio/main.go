@@ -36,6 +36,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
@@ -173,25 +174,28 @@ func processOne(ctx context.Context, srv *drive.Service, f *drive.File, tmpDir s
 	}
 	defer os.Remove(inPath)
 
-	codec, err := probeAudioCodec(inPath)
+	codecs, err := probeCodecs(inPath)
 	if err != nil {
 		return fmt.Errorf("ffprobe: %w", err)
 	}
 
 	ext := strings.ToLower(filepath.Ext(f.Name))
-	if (codec == "aac" || codec == "mp3") && (ext == ".mp4" || ext == ".m4v") {
-		log.Printf("  skip: already %s in %s", codec, ext)
+	videoCompatible := codecs.Video == "h264"
+	audioCompatible := codecs.Audio == "aac" || codecs.Audio == "mp3"
+	containerCompatible := ext == ".mp4" || ext == ".m4v"
+	if videoCompatible && audioCompatible && containerCompatible {
+		log.Printf("  skip: already video=%s audio=%s in %s", codecs.Video, codecs.Audio, ext)
 		return errSkip
 	}
 
-	log.Printf("  audio=%s container=%s -> remuxing to aac/mp4", codec, ext)
+	log.Printf("  video=%s audio=%s container=%s -> converting to h264/aac/mp4", codecs.Video, codecs.Audio, ext)
 	if dryRun {
 		log.Printf("  (dry-run, not uploading)")
 		return errSkip
 	}
 
 	outPath := filepath.Join(tmpDir, f.Id+"-out.mp4")
-	if err := remux(inPath, outPath); err != nil {
+	if err := convertForBrowsers(inPath, outPath, videoCompatible); err != nil {
 		return fmt.Errorf("ffmpeg: %w", err)
 	}
 	defer os.Remove(outPath)
@@ -222,21 +226,53 @@ func downloadFile(ctx context.Context, srv *drive.Service, fileID, destPath stri
 	return err
 }
 
-func probeAudioCodec(path string) (string, error) {
-	out, err := exec.Command("ffprobe", "-v", "error", "-select_streams", "a:0",
-		"-show_entries", "stream=codec_name", "-of", "default=noprint_wrappers=1:nokey=1", path).Output()
-	if err != nil {
-		return "", err
-	}
-	return strings.TrimSpace(string(out)), nil
+type mediaCodecs struct {
+	Video string
+	Audio string
 }
 
-func remux(inPath, outPath string) error {
-	cmd := exec.Command("ffmpeg", "-y", "-v", "error", "-i", inPath,
-		"-map", "0:v:0", "-map", "0:a:0",
-		"-c:v", "copy", "-c:a", "aac", "-b:a", "192k",
-		"-movflags", "+faststart",
-		outPath)
+func probeCodecs(path string) (mediaCodecs, error) {
+	out, err := exec.Command("ffprobe", "-v", "error", "-show_entries", "stream=codec_type,codec_name", "-of", "json", path).Output()
+	if err != nil {
+		return mediaCodecs{}, err
+	}
+	var probe struct {
+		Streams []struct {
+			CodecType string `json:"codec_type"`
+			CodecName string `json:"codec_name"`
+		} `json:"streams"`
+	}
+	if err := json.Unmarshal(out, &probe); err != nil {
+		return mediaCodecs{}, err
+	}
+	var codecs mediaCodecs
+	for _, stream := range probe.Streams {
+		switch stream.CodecType {
+		case "video":
+			if codecs.Video == "" {
+				codecs.Video = stream.CodecName
+			}
+		case "audio":
+			if codecs.Audio == "" {
+				codecs.Audio = stream.CodecName
+			}
+		}
+	}
+	if codecs.Video == "" || codecs.Audio == "" {
+		return mediaCodecs{}, fmt.Errorf("missing video or audio stream (video=%q audio=%q)", codecs.Video, codecs.Audio)
+	}
+	return codecs, nil
+}
+
+func convertForBrowsers(inPath, outPath string, copyVideo bool) error {
+	args := []string{"-y", "-v", "error", "-i", inPath, "-map", "0:v:0", "-map", "0:a:0"}
+	if copyVideo {
+		args = append(args, "-c:v", "copy")
+	} else {
+		args = append(args, "-c:v", "libx264", "-preset", "medium", "-crf", "20", "-pix_fmt", "yuv420p")
+	}
+	args = append(args, "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", outPath)
+	cmd := exec.Command("ffmpeg", args...)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("%w: %s", err, strings.TrimSpace(string(out)))

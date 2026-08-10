@@ -40,12 +40,18 @@ export function fetchCatalog() {
   return request("/api/catalog");
 }
 
-export function streamURL(fileId) {
-  return `/api/stream?id=${encodeURIComponent(fileId)}`;
+export function streamURL(fileId, version = "") {
+  const params = new URLSearchParams({ id: fileId });
+  if (version) params.set("v", version);
+  return `/api/stream?${params.toString()}`;
 }
 
 export function watchPath(item) {
-  const params = new URLSearchParams({ id: item.id, title: item.name || "" });
+  const params = new URLSearchParams({
+    id: item.id,
+    title: item.name || "",
+    v: item.modifiedTime || "",
+  });
   return `/watch?${params.toString()}`;
 }
 

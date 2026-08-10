@@ -276,3 +276,7 @@ dos originais (e apague os antigos, pra não duplicar no catálogo).
   consumiria exatamente os mesmos endpoints, sem mudar nada aqui.
 - Testes automatizados (`go test`) — a estrutura em `internal/handlers`
   já isola a lógica de HTTP puro, facilitando testes de unidade.
+
+https://resend.com/domains/05261224-c0b3-4585-b0d5-ece275522c89
+https://console.upstash.com/redis/4b2b3e3d-9675-448b-a4de-398b75b7eed3/data-browser
+https://console.cloud.google.com/iam-admin/serviceaccounts/details/100382320512239714319/keys?project=movie-privet&supportedpurview=project

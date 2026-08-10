@@ -7,6 +7,7 @@ export default function Watch() {
   const [params] = useSearchParams();
   const fileId = params.get("id") || "";
   const title = formatTitle(params.get("title") || "");
+  const version = params.get("v") || "";
 
   useEffect(() => {
     document.body.classList.add("player-body");
@@ -26,5 +27,5 @@ export default function Watch() {
     );
   }
 
-  return <VideoPlayer fileId={fileId} title={title} />;
+  return <VideoPlayer fileId={fileId} title={title} version={version} />;
 }
