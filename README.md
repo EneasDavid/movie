@@ -81,6 +81,19 @@ domínio configurado no Resend precisa aparecer como **Verified** (não
 teste `onboarding@resend.dev` só entrega para o endereço do proprietário da
 conta Resend.
 
+### Região da função (`regions` no `vercel.json`)
+
+`"regions": ["gru1"]` fixa a função em São Paulo. Sem isso, a Vercel roda
+no seu default (`iad1`, Washington D.C.) mesmo quando a requisição chega
+por uma borda mais próxima do usuário — confirmado ao vivo comparando o
+header `x-vercel-id`, que vinha como `gru1::iad1::...` (borda em São
+Paulo, função executando nos EUA). Como o proxy de streaming faz várias
+requisições de range sequenciais por vídeo, cada uma cruzando
+Brasil↔EUA↔Brasil, isso é uma fonte real de lentidão especificamente em
+produção — não reproduz em teste local, onde não existe essa travessia
+de rede nenhuma. Rodar a função em `gru1` elimina essa travessia pra
+quem assiste do Brasil.
+
 ## Arquitetura
 
 ```

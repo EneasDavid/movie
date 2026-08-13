@@ -2,6 +2,7 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "go",
   "buildCommand": "npm --prefix web ci && npm --prefix web run build && go build -o server ./cmd/server",
+  "regions": ["gru1"],
   "headers": [
     {
       "source": "/assets/(.*)",
