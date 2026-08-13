@@ -20,5 +20,9 @@ web/dist/
 *service-account*.json
 movie-privet-*.json
 
+# cmd/fixaudio -watch mode's local progress tracker (which file versions
+# have already been checked) — machine-local state, not source.
+fixaudio-state.json
+
 # OS
 .DS_Store

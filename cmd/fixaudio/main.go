@@ -27,11 +27,26 @@
 //     has no access to your files until you explicitly share with it,
 //     same as sharing with any other Google account.
 //
-// USAGE:
+// USAGE (one-shot — fixes what's there right now, then exits):
 //
 //	go run ./cmd/fixaudio -credentials=/path/to/service-account.json -folder=<DRIVE_FOLDER_ID>
 //
 // Add -dry-run to see what would be fixed without changing anything.
+//
+// USAGE (watch mode — this is the "native" fix: run it once, leave it
+// running, and every new/replaced video gets caught automatically without
+// you re-running anything by hand):
+//
+//	go run ./cmd/fixaudio -credentials=... -folder=... -watch -interval=10m
+//
+// Polling, not a Drive push subscription — Drive's real-time change
+// notifications need a webhook endpoint with a public HTTPS URL and
+// periodic renewal, which is more moving parts than a personal catalog
+// warrants. A poll loop is simpler to run unattended (cron, a systemd
+// unit, a spare Raspberry Pi, whatever machine has ffmpeg on it) and the
+// -state file means each pass after the first only re-downloads files
+// that are new or have changed (by Drive's modifiedTime) — it does not
+// re-fetch the whole catalog's bytes every interval.
 package main
 
 import (
@@ -42,8 +57,11 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"strings"
+	"syscall"
+	"time"
 
 	"google.golang.org/api/drive/v3"
 	"google.golang.org/api/option"
@@ -56,6 +74,9 @@ func main() {
 	folderID := flag.String("folder", os.Getenv("GOOGLE_DRIVE_FOLDER_ID"), "root Drive folder ID (defaults to $GOOGLE_DRIVE_FOLDER_ID)")
 	dryRun := flag.Bool("dry-run", false, "list what would be fixed without downloading/uploading anything")
 	forceRemux := flag.Bool("force-remux", false, "rewrite compatible MP4 files as streaming-friendly fragmented MP4")
+	watch := flag.Bool("watch", false, "keep running, re-scanning the folder every -interval instead of exiting after one pass")
+	interval := flag.Duration("interval", 10*time.Minute, "how often to re-scan the folder in -watch mode")
+	statePath := flag.String("state", "fixaudio-state.json", "where to persist which file versions have already been checked (-watch mode only, so restarts don't re-download everything)")
 	flag.Parse()
 
 	if *credentials == "" {
@@ -71,47 +92,137 @@ func main() {
 		log.Fatal("ffprobe not found on PATH — install with 'brew install ffmpeg'")
 	}
 
-	ctx := context.Background()
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
 	srv, err := drive.NewService(ctx, option.WithCredentialsFile(*credentials))
 	if err != nil {
 		log.Fatalf("drive.NewService: %v", err)
 	}
 
-	videos, err := collectVideos(srv, *folderID)
-	if err != nil {
-		log.Fatalf("listing catalog: %v", err)
-	}
-	log.Printf("found %d video(s) across the root folder and its subfolders", len(videos))
+	state := loadState(*statePath)
 
-	tmpDir, err := os.MkdirTemp("", "fixaudio-*")
-	if err != nil {
-		log.Fatalf("create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tmpDir)
-
-	var fixed, skipped, failed int
-	for i, v := range videos {
-		log.Printf("[%d/%d] %s (%s)", i+1, len(videos), v.Name, v.Id)
-
-		if err := processOne(ctx, srv, v, tmpDir, *dryRun, *forceRemux); err != nil {
-			if err == errSkip {
-				skipped++
-				continue
-			}
-			log.Printf("  FAIL: %v", err)
-			failed++
-			continue
+	if !*watch {
+		failed := runPass(ctx, srv, *folderID, *dryRun, *forceRemux, state)
+		saveState(*statePath, state)
+		if failed > 0 {
+			os.Exit(1)
 		}
-		fixed++
+		return
 	}
 
-	log.Printf("done. fixed=%d skipped=%d failed=%d", fixed, skipped, failed)
-	if failed > 0 {
-		os.Exit(1)
+	log.Printf("watch mode: re-scanning %q every %s (Ctrl-C to stop)", *folderID, *interval)
+	for {
+		runPass(ctx, srv, *folderID, *dryRun, *forceRemux, state)
+		saveState(*statePath, state)
+
+		select {
+		case <-ctx.Done():
+			log.Printf("stopping (signal received)")
+			return
+		case <-time.After(*interval):
+		}
 	}
 }
 
 var errSkip = fmt.Errorf("skip")
+
+// watchState maps a Drive file ID to the modifiedTime it had the last time
+// this tool inspected it — so a re-scan can tell "already checked, nothing
+// changed since" apart from "new or replaced, needs a look" without
+// re-downloading every file's bytes just to find out.
+type watchState struct {
+	path    string
+	Checked map[string]string `json:"checked"` // fileID -> modifiedTime
+}
+
+func loadState(path string) *watchState {
+	s := &watchState{path: path, Checked: map[string]string{}}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return s // no state file yet — first run, that's fine
+	}
+	if err := json.Unmarshal(data, s); err != nil {
+		log.Printf("state: %q is unreadable (%v) — starting fresh", path, err)
+		return &watchState{path: path, Checked: map[string]string{}}
+	}
+	s.path = path
+	return s
+}
+
+func saveState(path string, s *watchState) {
+	data, err := json.MarshalIndent(s, "", "  ")
+	if err != nil {
+		log.Printf("state: marshal failed: %v", err)
+		return
+	}
+	if err := os.WriteFile(path, data, 0o600); err != nil {
+		log.Printf("state: write %q failed: %v", path, err)
+	}
+}
+
+// runPass does one full scan-and-fix cycle and returns the number of
+// failures (0 in the common case). Files whose modifiedTime matches what's
+// already recorded in state are skipped without downloading — the whole
+// point of -watch mode is that steady-state passes are cheap.
+func runPass(ctx context.Context, srv *drive.Service, folderID string, dryRun, forceRemux bool, state *watchState) int {
+	videos, err := collectVideos(srv, folderID)
+	if err != nil {
+		log.Printf("listing catalog: %v", err)
+		return 1
+	}
+
+	var toCheck []*drive.File
+	for _, v := range videos {
+		if state.Checked[v.Id] == v.ModifiedTime {
+			continue
+		}
+		toCheck = append(toCheck, v)
+	}
+	log.Printf("found %d video(s), %d new/changed since last check", len(videos), len(toCheck))
+	if len(toCheck) == 0 {
+		return 0
+	}
+
+	tmpDir, err := os.MkdirTemp("", "fixaudio-*")
+	if err != nil {
+		log.Printf("create temp dir: %v", err)
+		return 1
+	}
+	defer os.RemoveAll(tmpDir)
+
+	var fixed, skipped, failed int
+	for i, v := range toCheck {
+		if ctx.Err() != nil {
+			break // shutting down — leave the rest for the next pass
+		}
+		log.Printf("[%d/%d] %s (%s)", i+1, len(toCheck), v.Name, v.Id)
+
+		modifiedTime := v.ModifiedTime
+		if err := processOne(ctx, srv, v, tmpDir, dryRun, forceRemux); err != nil {
+			if err == errSkip {
+				skipped++
+				if !dryRun {
+					state.Checked[v.Id] = modifiedTime
+				}
+				continue
+			}
+			log.Printf("  FAIL: %v", err)
+			failed++
+			continue // don't record state — worth retrying next pass
+		}
+		fixed++
+		// The upload changed modifiedTime again; re-fetch it so the next
+		// pass recognizes this exact (now-fixed) version and leaves it
+		// alone instead of reprocessing its own output forever.
+		if updated, err := srv.Files.Get(v.Id).Fields("modifiedTime").Context(ctx).Do(); err == nil {
+			state.Checked[v.Id] = updated.ModifiedTime
+		}
+	}
+
+	log.Printf("pass done. fixed=%d skipped=%d failed=%d", fixed, skipped, failed)
+	return failed
+}
 
 // collectVideos mirrors internal/drive/catalog.go's BuildCatalog: root
 // folder's own videos, plus one level of subfolders' videos. Kept
@@ -155,7 +266,7 @@ func listChildren(srv *drive.Service, folderID string) ([]*drive.File, error) {
 	var out []*drive.File
 	call := srv.Files.List().
 		Q(fmt.Sprintf("'%s' in parents and trashed = false", folderID)).
-		Fields("nextPageToken, files(id, name, mimeType)").
+		Fields("nextPageToken, files(id, name, mimeType, modifiedTime)").
 		PageSize(1000)
 
 	return out, call.Pages(context.Background(), func(page *drive.FileList) error {

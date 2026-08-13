@@ -200,9 +200,8 @@ runtime, e mesmo que tivesse, recodificar um filme inteiro em tempo real
 a cada request estouraria os limites de execução/memória do Vercel de
 longe.
 
-A correção real é uma vez só, na origem — duas formas de fazer isso,
-ambas rodando localmente (nenhuma roda dentro do app publicado, pelo
-motivo acima):
+A correção real acontece na origem, não no app publicado (pelo motivo
+acima) — três formas de fazer isso, da mais manual pra mais automática:
 
 ### Opção A — manual: baixa, roda o script, sobe de volta
 
@@ -265,6 +264,40 @@ go run ./cmd/fixaudio -credentials=/caminho/para/service-account.json -folder=$G
 
 Use `-dry-run` primeiro pra ver o que seria corrigido sem baixar/subir
 nada.
+
+### Opção C — automático e contínuo: modo `-watch`
+
+Essa é a versão "nativa" de verdade: rode uma vez e deixe rodando — todo
+vídeo novo ou substituído na pasta é corrigido sozinho, sem precisar
+rodar nada na mão de novo depois. Não é uma inscrição em tempo real do
+Drive (isso exigiria um endpoint HTTPS público pra receber webhooks) — é
+um polling simples, que revisita a pasta a cada `-interval`:
+
+```bash
+go run ./cmd/fixaudio -credentials=/caminho/para/service-account.json \
+  -folder=$GOOGLE_DRIVE_FOLDER_ID -watch -interval=10m
+```
+
+Cada passada depois da primeira só baixa arquivos novos ou alterados —
+`-state` (por padrão `fixaudio-state.json`, ao lado de onde o comando
+roda) guarda qual `modifiedTime` de cada arquivo já foi conferido, então
+não fica rebaixando o catálogo inteiro a cada 10 minutos.
+
+**Isso precisa ficar rodando em algum lugar com `ffmpeg`** — não pode ser
+só o Vercel (mesmo motivo de sempre). As opções mais simples, sem custo:
+
+- **Sua própria máquina**, enquanto estiver ligada — mais simples de
+  começar, mas só corrige o que aparecer enquanto o processo estiver de
+  pé.
+- **Um serviço em segundo plano** (`launchd` no macOS, `systemd` no
+  Linux) pra sobreviver a reinícios. No macOS, por exemplo, um
+  `~/Library/LaunchAgents/com.df-orfeu.fixaudio.plist` chamando o binário
+  compilado (`go build -o fixaudio ./cmd/fixaudio`) com `RunAtLoad` e
+  `KeepAlive` faz isso rodar sempre que a máquina estiver ligada, sem
+  precisar abrir um terminal.
+- **Uma VM gratuita** (ex: Oracle Cloud Free Tier, que tem uma instância
+  "always free" real) se quiser algo que fique de pé 24/7 sem depender do
+  seu computador.
 
 Depois, suba os arquivos de `/caminho/de/saida` pro Google Drive no lugar
 dos originais (e apague os antigos, pra não duplicar no catálogo).
