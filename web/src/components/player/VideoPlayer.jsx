@@ -137,16 +137,15 @@ export default function VideoPlayer({ fileId, title, version, mimeType, initialD
     const video = videoRef.current;
     if (!video) return;
     if (video.paused) {
+      // requestLandscape() fires from the video's own "play" event
+      // instead of here — that also covers native mobile controls, which
+      // never call this function at all (see the onPlay listener below).
       video.play().catch(() => setError("Não foi possível iniciar a reprodução."));
-      // Tied to this tap so it counts as a real user gesture — required
-      // by both the Fullscreen API and Screen Orientation Lock. Safe to
-      // call every play tap: entering fullscreen/locking twice is a no-op.
-      requestLandscape();
     } else {
       video.pause();
     }
     resetIdle();
-  }, [resetIdle, requestLandscape]);
+  }, [resetIdle]);
 
   const seekBy = useCallback(
     (deltaSeconds) => {
@@ -223,6 +222,16 @@ export default function VideoPlayer({ fileId, title, version, mimeType, initialD
     const onPlay = () => {
       setIsPlaying(true);
       flashFeedback("play");
+      // Wired here, not only in togglePlay: on mobile the <video> uses
+      // native browser controls (useNativeControls), so tapping play
+      // never runs our togglePlay handler at all — only the element's own
+      // "play" event fires. That was silently breaking the landscape
+      // rotation on mobile (it never had a real trigger to fire from).
+      // The DOM event fires synchronously enough off a real tap to still
+      // count as a user gesture for webkitEnterFullscreen/Fullscreen API.
+      // Safe to call unconditionally: it's a no-op on desktop and a no-op
+      // if already fullscreen/locked.
+      requestLandscape();
     };
     const onPause = () => {
       setIsPlaying(false);
@@ -271,7 +280,7 @@ export default function VideoPlayer({ fileId, title, version, mimeType, initialD
       video.removeEventListener("loadedmetadata", handleLoadedMetadata);
       video.removeEventListener("timeupdate", handleTimeUpdate);
     };
-  }, [flashFeedback, handleLoadedMetadata, handleTimeUpdate, saveProgress]);
+  }, [flashFeedback, handleLoadedMetadata, handleTimeUpdate, saveProgress, requestLandscape]);
 
   useEffect(() => {
     const onFsChange = () => setIsFullscreen(!!document.fullscreenElement);
@@ -334,6 +343,14 @@ export default function VideoPlayer({ fileId, title, version, mimeType, initialD
         controls={useNativeControls}
         preload="metadata"
         autoPlay={!useNativeControls}
+        // Without this, iOS Safari refuses inline playback and forces its
+        // own native fullscreen the instant playback starts — fighting
+        // with our own webkitEnterFullscreen() call in requestLandscape()
+        // and, on some iOS versions, landing in a broken media session
+        // with a picture but no audio route. playsInline lets the video
+        // start normally inline; requestLandscape() then deliberately
+        // takes it into fullscreen itself, once, on purpose.
+        playsInline
         onClick={useNativeControls ? undefined : togglePlay}
       >
         <source src={src} type={mimeType || undefined} />
