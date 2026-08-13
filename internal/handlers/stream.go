@@ -331,35 +331,47 @@ func serveRangeFromRanges(ctx context.Context, w http.ResponseWriter, a *appctx.
 }
 
 // copyDriveRanges walks [start,end] in fullStreamUpstreamChunkBytes-sized
-// windows, fetching each from Drive and writing it to the client.
+// windows, fetching each from Drive and copying it to the client.
 //
-// Chunks are prefetched one ahead: a producer goroutine issues the next
-// Drive range request while this loop is still writing/flushing the
-// current chunk to the client. A naive serial version — request chunk,
-// wait for headers, stream body, THEN request the next chunk — spends
-// real, visible time with zero bytes reaching the client between chunks:
-// just the round-trip to issue the next request and get its response
-// headers back. For a large movie split into ~150+ 16MB chunks, that
-// per-chunk gap adds up to a genuinely slow-feeling load, which is
-// exactly the "demora demais pra carregar" this fixes. Overlapping fetch
-// with write hides that gap behind work we were already doing.
+// The NEXT chunk's Drive request is opened (request issued, headers
+// received) while this loop is still copying the CURRENT chunk's body to
+// the client — that request/header round-trip is otherwise dead time
+// with zero bytes reaching the client, and for a large movie split into
+// ~150+ 16MB chunks it adds up to a genuinely slow-feeling load. Once a
+// chunk's response is "current", its body is streamed to the client the
+// same way the old fully-serial version did: io.Copy, in its normal
+// small internal buffer increments.
+//
+// An earlier version of this prefetch fully buffered each ~16MB chunk
+// into a []byte and wrote it in one large w.Write() call, to make the
+// handoff between the fetch goroutine and this loop a plain channel of
+// byte slices. That was wrong on Vercel specifically: it crashed
+// production with FUNCTION_INVOCATION_FAILED as soon as a request needed
+// a second chunk (confirmed live — a 9MB range worked, a 17MB one
+// didn't), which was never caught locally because the local dev server
+// doesn't share whatever response-handling constraint Vercel's Go
+// runtime has around large single Write() calls. Handing off the live
+// *http.Response instead and still copying its body in small increments
+// keeps the exact write pattern that was already proven to work, while
+// still overlapping the part that was actually slow.
 func copyDriveRanges(ctx context.Context, w http.ResponseWriter, a *appctx.App, fileID string, start, end int64) {
 	flusher, canFlush := w.(http.Flusher)
 
-	type chunkResult struct {
-		data []byte
-		err  error
+	type openResult struct {
+		resp    *http.Response
+		release func()
+		err     error
 	}
 
 	fetchCtx, cancelFetch := context.WithCancel(ctx)
 	defer cancelFetch()
 
-	// Buffered by 1: exactly one chunk may be fetched ahead of the one
-	// currently being written. Deeper prefetch would hold more Drive
-	// semaphore slots per active viewer for longer, for diminishing
-	// return — one chunk ahead is enough to hide the request/header
-	// round-trip, which is the actual gap being closed here.
-	results := make(chan chunkResult, 1)
+	// Buffered by 1: exactly one chunk's request may be opened ahead of
+	// the one currently being copied. Each in-flight chunk holds a Drive
+	// semaphore slot for longer this way, so going deeper than one has
+	// diminishing return for more held slots — one is enough to hide the
+	// request/header round-trip, which is the actual gap being closed.
+	results := make(chan openResult, 1)
 
 	go func() {
 		defer close(results)
@@ -371,10 +383,22 @@ func copyDriveRanges(ctx context.Context, w http.ResponseWriter, a *appctx.App, 
 			if chunkEnd > end {
 				chunkEnd = end
 			}
-			data, err := fetchDriveRange(fetchCtx, a, fileID, chunkStart, chunkEnd)
+			rangeHeader := fmt.Sprintf("bytes=%d-%d", chunkStart, chunkEnd)
+			resp, release, err := a.Drive.OpenStream(fetchCtx, fileID, rangeHeader)
+			if err == nil && resp.StatusCode != http.StatusPartialContent && resp.StatusCode != http.StatusOK {
+				body, _ := io.ReadAll(io.LimitReader(resp.Body, 500))
+				err = fmt.Errorf("drive status=%d range=%s body=%q", resp.StatusCode, rangeHeader, string(body))
+				resp.Body.Close()
+				release()
+				resp, release = nil, nil
+			}
 			select {
-			case results <- chunkResult{data: data, err: err}:
+			case results <- openResult{resp: resp, release: release, err: err}:
 			case <-fetchCtx.Done():
+				if resp != nil {
+					resp.Body.Close()
+					release()
+				}
 				return
 			}
 			if err != nil {
@@ -388,33 +412,14 @@ func copyDriveRanges(ctx context.Context, w http.ResponseWriter, a *appctx.App, 
 			log.Printf("stream: sequential fetch failed file=%s: %v", fileID, res.err)
 			return
 		}
-		if _, err := w.Write(res.data); err != nil {
+		_, copyErr := io.Copy(w, res.resp.Body)
+		res.resp.Body.Close()
+		res.release()
+		if copyErr != nil {
 			return
 		}
 		if canFlush {
 			flusher.Flush()
 		}
 	}
-}
-
-// fetchDriveRange fetches one bounded range fully into memory. Buffering
-// the whole chunk (rather than streaming it through unbuffered) is what
-// makes the producer/consumer handoff in copyDriveRanges possible — the
-// producer goroutine needs a self-contained value to hand off on a
-// channel, not a live response body two goroutines would otherwise have
-// to coordinate closing.
-func fetchDriveRange(ctx context.Context, a *appctx.App, fileID string, start, end int64) ([]byte, error) {
-	rangeHeader := fmt.Sprintf("bytes=%d-%d", start, end)
-	resp, release, err := a.Drive.OpenStream(ctx, fileID, rangeHeader)
-	if err != nil {
-		return nil, fmt.Errorf("OpenStream(range=%s): %w", rangeHeader, err)
-	}
-	defer release()
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusPartialContent && resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(io.LimitReader(resp.Body, 500))
-		return nil, fmt.Errorf("drive status=%d range=%s body=%q", resp.StatusCode, rangeHeader, string(body))
-	}
-	return io.ReadAll(resp.Body)
 }
